@@ -1,0 +1,3 @@
+<map id="WeatherLog" name="WeatherLog">
+<area shape="rect" id="node1" title="Stores all WeatherRec records loaded from CSV." alt="" coords="5,5,117,127"/>
+</map>

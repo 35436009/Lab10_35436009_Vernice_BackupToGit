@@ -1,0 +1,5 @@
+<map id="WeatherLog::GetSize" name="WeatherLog::GetSize">
+<area shape="rect" id="node1" title="Returns number of records stored." alt="" coords="220,42,367,69"/>
+<area shape="rect" id="node2" href="$class_utility_stats.html#a2bce6d321486f725bfd8a5555125ac77" title="Checks whether any usable data exists for a given month and year." alt="" coords="5,5,172,47"/>
+<area shape="rect" id="node3" href="$class_utility_stats.html#abd5758da1a63de50be50304c0ca10b17" title="Computes the total solar radiation for a specified month and year." alt="" coords="13,71,165,98"/>
+</map>

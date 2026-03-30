@@ -1,0 +1,6 @@
+<map id="UtilityStats::HasAnyDataForMonth" name="UtilityStats::HasAnyDataForMonth">
+<area shape="rect" id="node1" title="Checks whether any usable data exists for a given month and year." alt="" coords="5,23,172,65"/>
+<area shape="rect" id="node2" href="$class_weather_log.html#acf3d99fd924c377202a4437c3bbc0238" title="Returns record at specified index." alt="" coords="220,5,383,32"/>
+<area shape="rect" id="node3" href="$class_weather_log.html#a7e58d91b43b638e28df9ac13242541f9" title="Returns number of records stored." alt="" coords="228,56,375,83"/>
+<area shape="rect" id="node4" href="$class_vector.html#a0151d4cb23bc2c5474418beb125829ca" title="Returns number of elements stored." alt="" coords="431,56,545,83"/>
+</map>

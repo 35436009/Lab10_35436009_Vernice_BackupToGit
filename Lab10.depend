@@ -1,0 +1,67 @@
+# depslib dependency file v1.0
+1774853445 source:c:\users\verni\desktop\murdoch\ict283 - data structures and abstractions\labs submission\lab10_35436009_vernice\application.cpp
+	"Application.h"
+	"UtilityStats.h"
+	<iostream>
+	<fstream>
+	"BST.h"
+	<cmath>
+
+1774853445 c:\users\verni\desktop\murdoch\ict283 - data structures and abstractions\labs submission\lab10_35436009_vernice\application.h
+	"WeatherLog.h"
+
+1774853445 c:\users\verni\desktop\murdoch\ict283 - data structures and abstractions\labs submission\lab10_35436009_vernice\weatherlog.h
+	"Vector.h"
+	"WeatherRec.h"
+
+1774853445 c:\users\verni\desktop\murdoch\ict283 - data structures and abstractions\labs submission\lab10_35436009_vernice\vector.h
+	<vector>
+
+1774853445 c:\users\verni\desktop\murdoch\ict283 - data structures and abstractions\labs submission\lab10_35436009_vernice\weatherrec.h
+	"Date.h"
+	"Time.h"
+
+1774853445 c:\users\verni\desktop\murdoch\ict283 - data structures and abstractions\labs submission\lab10_35436009_vernice\date.h
+	<iostream>
+
+1774853445 c:\users\verni\desktop\murdoch\ict283 - data structures and abstractions\labs submission\lab10_35436009_vernice\time.h
+	<iostream>
+
+1774853445 c:\users\verni\desktop\murdoch\ict283 - data structures and abstractions\labs submission\lab10_35436009_vernice\utilitystats.h
+	"WeatherLog.h"
+
+1774853445 c:\users\verni\desktop\murdoch\ict283 - data structures and abstractions\labs submission\lab10_35436009_vernice\bst.h
+	<iostream>
+
+1774853445 source:c:\users\verni\desktop\murdoch\ict283 - data structures and abstractions\labs submission\lab10_35436009_vernice\dataloader.cpp
+	"DataLoader.h"
+	<iostream>
+	<fstream>
+	<sstream>
+	<string>
+
+1774853445 c:\users\verni\desktop\murdoch\ict283 - data structures and abstractions\labs submission\lab10_35436009_vernice\dataloader.h
+	"WeatherLog.h"
+	<string>
+
+1774853445 source:c:\users\verni\desktop\murdoch\ict283 - data structures and abstractions\labs submission\lab10_35436009_vernice\date.cpp
+	"Date.h"
+
+1774853445 source:c:\users\verni\desktop\murdoch\ict283 - data structures and abstractions\labs submission\lab10_35436009_vernice\main.cpp
+	"Application.h"
+	"DataLoader.h"
+	<iostream>
+
+1774853445 source:c:\users\verni\desktop\murdoch\ict283 - data structures and abstractions\labs submission\lab10_35436009_vernice\time.cpp
+	"Time.h"
+
+1774853445 source:c:\users\verni\desktop\murdoch\ict283 - data structures and abstractions\labs submission\lab10_35436009_vernice\utilitystats.cpp
+	"UtilityStats.h"
+	<cmath>
+
+1774853445 source:c:\users\verni\desktop\murdoch\ict283 - data structures and abstractions\labs submission\lab10_35436009_vernice\weatherlog.cpp
+	"WeatherLog.h"
+
+1774853445 source:c:\users\verni\desktop\murdoch\ict283 - data structures and abstractions\labs submission\lab10_35436009_vernice\weatherrec.cpp
+	"WeatherRec.h"
+

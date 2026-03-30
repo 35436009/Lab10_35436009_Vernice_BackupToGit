@@ -1,0 +1,3 @@
+<map id="WindRecType" name="WindRecType">
+<area shape="rect" id="node1" title="Represents a single wind data record. Stores date, time, and wind speed (in m/s)." alt="" coords="5,5,128,185"/>
+</map>

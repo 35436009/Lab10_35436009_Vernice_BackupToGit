@@ -5,12 +5,12 @@
 
 /**
  * @class Application
- * @brief Controls menu system and program execution.
+ * @brief Controls the menu system and program execution.
  *
  * Responsibilities:
  * - Display menu
  * - Handle user input
- * - Call Stats functions
+ * - Call statistics functions
  * - Write output file
  *
  * @author Vernice Foong
@@ -32,7 +32,7 @@ public:
     void Run();
 
 private:
-    WeatherLog& m_log;  //Ref to the loaded WeatherLog.
+    WeatherLog& m_log;  // Reference to the loaded WeatherLog.
 
     /**
      * @brief Displays the main menu options to the user.
@@ -49,8 +49,8 @@ private:
     /**
      * @brief Returns the English name of a given month.
      *
-     * @param month Month number (1�12).
-     * @return Pointer to constant month name string.
+     * @param month Month number (1-12).
+     * @return Pointer to a constant month name string.
      */
     const char* GetMonthName(int month) const;
 
@@ -70,19 +70,17 @@ private:
 
     /**
      * @brief Menu Option 3:
-     * Computes and displays total solar radiation (kWh/m^2)
-     * for each month of a specified year.
+     * Computes and displays sample Pearson correlation coefficients for
+     * wind speed, temperature, and solar radiation for a specified month.
      */
     void DoOption3();
 
     /**
      * @brief Menu Option 4:
-     * Generates WindTempSolar.csv containing monthly
-     * wind, temperature, and solar statistics for a specified year.
+     * Generates WindTempSolar.csv containing monthly wind, temperature,
+     * and solar statistics for a specified year.
      */
     void DoOption4();
-
-    void DoBST();
 };
 
 #endif

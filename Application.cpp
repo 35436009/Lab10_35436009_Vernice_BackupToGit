@@ -2,7 +2,6 @@
 #include "UtilityStats.h"
 #include <iostream>
 #include <fstream>
-#include "BST.h"
 #include <cmath>
 
 // Constructor for reference to WeatherLog.
@@ -76,16 +75,35 @@ const char* Application::GetMonthName(int month) const
     {
         return names[month - 1];
     }
-    else
-    {
-        return "";
-    }
+    return "";
 }
 
 // Rounds a value to 2 decimal places.
 static double Round2(double value)
 {
     return std::floor(value * 100.0 + 0.5) / 100.0;
+}
+
+// Computes sample Pearson correlation coefficient.
+static bool ComputeSPCC(int n, double sumX, double sumY, double sumXY,
+                        double sumX2, double sumY2, double& result)
+{
+    if (n < 2)
+    {
+        return false;
+    }
+
+    double numerator = n * sumXY - sumX * sumY;
+    double denominator = std::sqrt((n * sumX2 - sumX * sumX) *
+                                   (n * sumY2 - sumY * sumY));
+
+    if (denominator == 0.0)
+    {
+        return false;
+    }
+
+    result = numerator / denominator;
+    return true;
 }
 
 // Menu option 1 for wind stats.
@@ -105,7 +123,7 @@ void Application::DoOption1()
 
     Vector<float> windValues;
 
-    for (int i = 0; i < m_log.GetSize(); ++i)
+    for (int i = 0; i < m_log.GetSize(); i++)
     {
         const WeatherRec& rec = m_log.GetRecord(i);
 
@@ -141,11 +159,11 @@ void Application::DoOption2()
 
     std::cout << year << "\n";
 
-    for (int month = 1; month <= 12; ++month)
+    for (int month = 1; month <= 12; month++)
     {
         Vector<float> tempValues;
 
-        for (int i = 0; i < m_log.GetSize(); ++i)
+        for (int i = 0; i < m_log.GetSize(); i++)
         {
             const WeatherRec& rec = m_log.GetRecord(i);
 
@@ -172,37 +190,6 @@ void Application::DoOption2()
                       << "\n";
         }
     }
-}
-
-// Converts a float value to string with 2 decimal places for CSV output.
-static void WriteValue(std::ofstream& out, bool hasValue, double value)
-{
-    if (hasValue)
-    {
-        out << Round2(value);
-    }
-}
-
-// Computes sample Pearson correlation coefficient.
-static bool ComputeSPCC(int n, double sumX, double sumY, double sumXY,
-                        double sumX2, double sumY2, double& result)
-{
-    if (n < 2)
-    {
-        return false;
-    }
-
-    double numerator = n * sumXY - sumX * sumY;
-    double denominator = std::sqrt((n * sumX2 - sumX * sumX) *
-                                   (n * sumY2 - sumY * sumY));
-
-    if (denominator == 0.0)
-    {
-        return false;
-    }
-
-    result = numerator / denominator;
-    return true;
 }
 
 // Menu option 3: Sample Pearson Correlation Coefficient for a month.
@@ -330,17 +317,17 @@ void Application::DoOption4()
 
     bool yearHasData = false;
 
-    for (int month = 1; month <= 12; ++month)
+    for (int month = 1; month <= 12; month++)
     {
         Vector<float> windValues;
         Vector<float> tempValues;
-        double totalSolar = 0.0;
 
-        for (int i = 0; i < m_log.GetSize(); ++i)
+        for (int i = 0; i < m_log.GetSize(); i++)
         {
             const WeatherRec& rec = m_log.GetRecord(i);
 
-            if (rec.GetDate().GetYear() != year || rec.GetDate().GetMonth() != month)
+            if (rec.GetDate().GetYear() != year ||
+                rec.GetDate().GetMonth() != month)
             {
                 continue;
             }
@@ -354,16 +341,9 @@ void Application::DoOption4()
             {
                 tempValues.Add(static_cast<float>(rec.GetTemperature()));
             }
-
-            if (rec.HasSolar())
-            {
-                double solar = rec.GetSolarRadiation();
-                if (solar >= 100.0)
-                {
-                    totalSolar += solar / 6000.0;
-                }
-            }
         }
+
+        double totalSolar = UtilityStats::SolarTotal(m_log, year, month);
 
         bool hasWind = (windValues.GetSize() > 0);
         bool hasTemp = (tempValues.GetSize() > 0);

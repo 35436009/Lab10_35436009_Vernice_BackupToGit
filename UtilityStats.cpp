@@ -3,180 +3,113 @@
 
 // Private helpers
 
-// Checks whether a record belongs to the given month and year.
+// Returns true if the record belongs to the given month and year.
 static bool MatchMonthYear(const WeatherRec& rec, int year, int month)
 {
     return rec.GetDate().GetYear() == year &&
            rec.GetDate().GetMonth() == month;
 }
 
-// Checks whether the month has any usable solar value.
+// Returns true if there is at least one usable solar reading for the month.
 static bool HasUsableSolarForMonth(const WeatherLog& log, int year, int month)
 {
-    for (int i = 0; i < log.GetSize(); i++)
+    for (int i = 0; i < log.GetSize(); ++i)
     {
         const WeatherRec& rec = log.GetRecord(i);
 
-        if (MatchMonthYear(rec, year, month) && rec.HasSolar())
+        if (MatchMonthYear(rec, year, month) &&
+            rec.HasSolar() &&
+            rec.GetSolarRadiation() >= 100.0)
         {
-            if (rec.GetSolarRadiation() >= 100.0)
-            {
-                return true;
-            }
+            return true;
         }
     }
 
     return false;
 }
 
-// Computes the mean wind speed in km/h.
-double UtilityStats::MeanWind(const WeatherLog& log, int year, int month)
+// Computes the mean of a vector of floating-point values.
+float UtilityStats::Mean(const Vector<float>& values)
 {
-    double sum = 0.0;
-    int count = 0;
-
-    for (int i = 0; i < log.GetSize(); i++)
+    if (values.GetSize() == 0)
     {
-        const WeatherRec& rec = log.GetRecord(i);
-
-        if (MatchMonthYear(rec, year, month) && rec.HasSpeed())
-        {
-            double speedKmh = rec.GetSpeed() * 3.6;
-            sum += speedKmh;
-            count++;
-        }
+        return 0.0f;
     }
 
-    if (count == 0)
+    float sum = 0.0f;
+
+    for (int i = 0; i < values.GetSize(); ++i)
     {
-        return 0.0;
+        sum += values[i];
     }
-    else
-    {
-        return sum / count;
-    }
+
+    return sum / values.GetSize();
 }
 
-// Computes the sample standard deviation of wind speed in km/h.
-double UtilityStats::SDWind(const WeatherLog& log, int year, int month, double mean)
+// Computes the sample standard deviation of a vector of floating-point values.
+// Uses the sample standard deviation formula with denominator (n - 1).
+float UtilityStats::StDev(const Vector<float>& values, float mean)
 {
-    double sumSquares = 0.0;
-    int count = 0;
-
-    for (int i = 0; i < log.GetSize(); i++)
+    if (values.GetSize() <= 1)
     {
-        const WeatherRec& rec = log.GetRecord(i);
-
-        if (MatchMonthYear(rec, year, month) && rec.HasSpeed())
-        {
-            double speedKmh = rec.GetSpeed() * 3.6;
-            double diff = speedKmh - mean;
-            sumSquares += diff * diff;
-            count++;
-        }
+        return 0.0f;
     }
 
-    if (count <= 1)
+    float sumSquares = 0.0f;
+
+    for (int i = 0; i < values.GetSize(); ++i)
     {
-        return 0.0;
+        float diff = values[i] - mean;
+        sumSquares += diff * diff;
     }
-    else
-    {
-        return std::sqrt(sumSquares / (count - 1));
-    }
+
+    return std::sqrt(sumSquares / (values.GetSize() - 1));
 }
 
-// Computes the mean temperature in degrees C.
-double UtilityStats::MeanTemp(const WeatherLog& log, int year, int month)
+// Computes the mean absolute deviation of a vector of floating-point values.
+// The mean absolute deviation is the average of the absolute differences from the mean.
+float UtilityStats::Mad(const Vector<float>& values, float mean)
 {
-    double sum = 0.0;
-    int count = 0;
-
-    for (int i = 0; i < log.GetSize(); i++)
+    if (values.GetSize() == 0)
     {
-        const WeatherRec& rec = log.GetRecord(i);
-
-        if (MatchMonthYear(rec, year, month) && rec.HasTemp())
-        {
-            sum += rec.GetTemperature();
-            count++;
-        }
+        return 0.0f;
     }
 
-    if (count == 0)
+    float sumAbs = 0.0f;
+
+    for (int i = 0; i < values.GetSize(); ++i)
     {
-        return 0.0;
+        sumAbs += std::fabs(values[i] - mean);
     }
-    else
-    {
-        return sum / count;
-    }
+
+    return sumAbs / values.GetSize();
 }
 
-// Computes the sample standard deviation of temperature.
-double UtilityStats::SDTemp(const WeatherLog& log, int year, int month, double mean)
-{
-    double sumSquares = 0.0;
-    int count = 0;
-
-    for (int i = 0; i < log.GetSize(); i++)
-    {
-        const WeatherRec& rec = log.GetRecord(i);
-
-        if (MatchMonthYear(rec, year, month) && rec.HasTemp())
-        {
-            double diff = rec.GetTemperature() - mean;
-            sumSquares += diff * diff;
-            count++;
-        }
-    }
-
-    if (count <= 1)
-    {
-        return 0.0;
-    }
-    else
-    {
-        return std::sqrt(sumSquares / (count - 1));
-    }
-}
-
-// Computes the monthly total solar radiation in kWh/m^2.
+// Computes the total solar radiation for a specified month and year.
+// Only solar radiation values >= 100 W/m^2 are included.
 double UtilityStats::SolarTotal(const WeatherLog& log, int year, int month)
 {
     double total = 0.0;
-    bool foundUsable = false;
 
-    for (int i = 0; i < log.GetSize(); i++)
+    for (int i = 0; i < log.GetSize(); ++i)
     {
         const WeatherRec& rec = log.GetRecord(i);
 
-        if (MatchMonthYear(rec, year, month) && rec.HasSolar())
+        if (MatchMonthYear(rec, year, month) &&
+            rec.HasSolar() &&
+            rec.GetSolarRadiation() >= 100.0)
         {
-            double solar = rec.GetSolarRadiation();
-
-            if (solar >= 100.0)
-            {
-                total += (solar / 6000.0);
-                foundUsable = true;
-            }
+            total += rec.GetSolarRadiation() / 6000.0;
         }
     }
 
-    if (foundUsable)
-    {
-        return total;
-    }
-    else
-    {
-        return 0.0;
-    }
+    return total;
 }
 
-// Checks whether the month has any usable wind, temperature, or solar data.
+//Checks whether any usable data exists for a given month and year.
 bool UtilityStats::HasAnyDataForMonth(const WeatherLog& log, int year, int month)
 {
-    for (int i = 0; i < log.GetSize(); i++)
+    for (int i = 0; i < log.GetSize(); ++i)
     {
         const WeatherRec& rec = log.GetRecord(i);
 
@@ -186,15 +119,13 @@ bool UtilityStats::HasAnyDataForMonth(const WeatherLog& log, int year, int month
             {
                 return true;
             }
+
+            if (rec.HasSolar() && rec.GetSolarRadiation() >= 100.0)
+            {
+                return true;
+            }
         }
     }
 
-    if (HasUsableSolarForMonth(log, year, month))
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    return false;
 }

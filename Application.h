@@ -14,7 +14,7 @@
  * - Write output file
  *
  * @author Vernice Foong
- * @version 04
+ * @version 05
  */
 class Application
 {
@@ -77,8 +77,10 @@ private:
 
     /**
      * @brief Menu Option 4:
-     * Generates WindTempSolar.csv containing monthly wind, temperature,
-     * and solar statistics for a specified year.
+     * Generates WindTempSolar.csv containing monthly wind speed, temperature,
+     * and solar radiation statistics for a specified year.
+     * Output includes average, sample standard deviation, and mean absolute deviation
+     * for wind speed and temperature.
      */
     void DoOption4();
 };

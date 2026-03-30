@@ -13,7 +13,7 @@ using std::istream;
  * Stores: Day, Month, Year
  *
  * @author Vernice Foong
- * @version 03
+ * @version 04
  */
 
 class Date
@@ -120,7 +120,6 @@ public:
      * @return True if this date is later than other.
      */
     bool operator>(const Date& other) const;
-
 
 private:
     int m_day;

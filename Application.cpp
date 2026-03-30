@@ -82,6 +82,12 @@ const char* Application::GetMonthName(int month) const
     }
 }
 
+// Rounds a value to 2 decimal places.
+static double Round2(double value)
+{
+    return std::floor(value * 100.0 + 0.5) / 100.0;
+}
+
 // Menu option 1 for wind stats.
 void Application::DoOption1()
 {
@@ -97,20 +103,34 @@ void Application::DoOption1()
         return;
     }
 
-    double mean = UtilityStats::MeanWind(m_log, year, month);
+    Vector<float> windValues;
 
-    if (mean == 0.0)
+    for (int i = 0; i < m_log.GetSize(); ++i)
+    {
+        const WeatherRec& rec = m_log.GetRecord(i);
+
+        if (rec.GetDate().GetYear() == year &&
+            rec.GetDate().GetMonth() == month &&
+            rec.HasSpeed())
+        {
+            windValues.Add(static_cast<float>(rec.GetSpeed() * 3.6));
+        }
+    }
+
+    if (windValues.GetSize() == 0)
     {
         std::cout << GetMonthName(month) << " " << year << ": No Data\n";
+        return;
     }
-    else
-    {
-        double sd = UtilityStats::SDWind(m_log, year, month, mean);
 
-        std::cout << GetMonthName(month) << " " << year << ":\n";
-        std::cout << "Average speed: " << mean << " km/h\n";
-        std::cout << "Sample stdev: " << sd << "\n";
-    }
+    float mean = UtilityStats::Mean(windValues);
+    float sd = UtilityStats::StDev(windValues, mean);
+    float mad = UtilityStats::Mad(windValues, mean);
+
+    std::cout << GetMonthName(month) << " " << year << ":\n";
+    std::cout << "Average speed: " << Round2(mean) << " km/h\n";
+    std::cout << "Sample stdev: " << Round2(sd) << "\n";
+    std::cout << "Mean absolute deviation: " << Round2(mad) << "\n";
 }
 
 // Menu option 2 for temperature stats.
@@ -123,28 +143,44 @@ void Application::DoOption2()
 
     for (int month = 1; month <= 12; ++month)
     {
-        double mean = UtilityStats::MeanTemp(m_log, year, month);
+        Vector<float> tempValues;
 
-        if (mean == 0.0)
+        for (int i = 0; i < m_log.GetSize(); ++i)
+        {
+            const WeatherRec& rec = m_log.GetRecord(i);
+
+            if (rec.GetDate().GetYear() == year &&
+                rec.GetDate().GetMonth() == month &&
+                rec.HasTemp())
+            {
+                tempValues.Add(static_cast<float>(rec.GetTemperature()));
+            }
+        }
+
+        if (tempValues.GetSize() == 0)
         {
             std::cout << GetMonthName(month) << ": No Data\n";
         }
         else
         {
-            double sd = UtilityStats::SDTemp(m_log, year, month, mean);
+            float mean = UtilityStats::Mean(tempValues);
+            float sd = UtilityStats::StDev(tempValues, mean);
 
             std::cout << GetMonthName(month)
-                      << ": average: " << mean
-                      << " degrees C, stdev: " << sd
+                      << ": average: " << Round2(mean)
+                      << " degrees C, stdev: " << Round2(sd)
                       << "\n";
         }
     }
 }
 
-// Rounds a value to 2 decimal places.
-static double Round2(double value)
+// Converts a float value to string with 2 decimal places for CSV output.
+static void WriteValue(std::ofstream& out, bool hasValue, double value)
 {
-    return std::floor(value * 100.0 + 0.5) / 100.0;
+    if (hasValue)
+    {
+        out << Round2(value);
+    }
 }
 
 // Computes sample Pearson correlation coefficient.
@@ -296,37 +332,80 @@ void Application::DoOption4()
 
     for (int month = 1; month <= 12; ++month)
     {
-        if (UtilityStats::HasAnyDataForMonth(m_log, year, month))
+        Vector<float> windValues;
+        Vector<float> tempValues;
+        double totalSolar = 0.0;
+
+        for (int i = 0; i < m_log.GetSize(); ++i)
         {
-            yearHasData = true;
+            const WeatherRec& rec = m_log.GetRecord(i);
 
-            double meanWind = UtilityStats::MeanWind(m_log, year, month);
-            double meanTemp = UtilityStats::MeanTemp(m_log, year, month);
-            double totalSolar = UtilityStats::SolarTotal(m_log, year, month);
-
-            out << GetMonthName(month) << ",";
-
-            if (meanWind != 0.0)
+            if (rec.GetDate().GetYear() != year || rec.GetDate().GetMonth() != month)
             {
-                double sdWind = UtilityStats::SDWind(m_log, year, month, meanWind);
-                out << meanWind << "(" << sdWind << ")";
-            }
-            out << ",";
-
-            if (meanTemp != 0.0)
-            {
-                double sdTemp = UtilityStats::SDTemp(m_log, year, month, meanTemp);
-                out << meanTemp << "(" << sdTemp << ")";
-            }
-            out << ",";
-
-            if (totalSolar != 0.0)
-            {
-                out << totalSolar;
+                continue;
             }
 
-            out << "\n";
+            if (rec.HasSpeed())
+            {
+                windValues.Add(static_cast<float>(rec.GetSpeed() * 3.6));
+            }
+
+            if (rec.HasTemp())
+            {
+                tempValues.Add(static_cast<float>(rec.GetTemperature()));
+            }
+
+            if (rec.HasSolar())
+            {
+                double solar = rec.GetSolarRadiation();
+                if (solar >= 100.0)
+                {
+                    totalSolar += solar / 6000.0;
+                }
+            }
         }
+
+        bool hasWind = (windValues.GetSize() > 0);
+        bool hasTemp = (tempValues.GetSize() > 0);
+        bool hasSolar = (totalSolar > 0.0);
+
+        if (!hasWind && !hasTemp && !hasSolar)
+        {
+            continue;
+        }
+
+        yearHasData = true;
+
+        out << GetMonthName(month) << ",";
+
+        if (hasWind)
+        {
+            float mean = UtilityStats::Mean(windValues);
+            float sd = UtilityStats::StDev(windValues, mean);
+            float mad = UtilityStats::Mad(windValues, mean);
+
+            out << Round2(mean) << "(" << Round2(sd) << ", " << Round2(mad) << ")";
+        }
+
+        out << ",";
+
+        if (hasTemp)
+        {
+            float mean = UtilityStats::Mean(tempValues);
+            float sd = UtilityStats::StDev(tempValues, mean);
+            float mad = UtilityStats::Mad(tempValues, mean);
+
+            out << Round2(mean) << "(" << Round2(sd) << ", " << Round2(mad) << ")";
+        }
+
+        out << ",";
+
+        if (hasSolar)
+        {
+            out << Round2(totalSolar);
+        }
+
+        out << "\n";
     }
 
     if (!yearHasData)
@@ -336,4 +415,4 @@ void Application::DoOption4()
 
     out.close();
     std::cout << "WindTempSolar.csv generated successfully.\n";
-} 
+}

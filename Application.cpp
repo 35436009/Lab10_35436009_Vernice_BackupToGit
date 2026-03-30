@@ -34,15 +34,14 @@ void Application::Run()
             DoOption4();
             break;
         case 5:
-            DoBST();
-            break;
-
-        case 6:
             std::cout << "Exiting...\n";
+            break;
+        default:
+            std::cout << "Invalid choice.\n";
             break;
         }
     }
-    while (choice != 6);
+    while (choice != 5);
 }
 
 // Displays the menu options.
@@ -52,9 +51,8 @@ void Application::DisplayMenu() const
     std::cout << "2. Temperature stats (year)\n";
     std::cout << "3. sPCC calculation (month)\n";
     std::cout << "4. Generate WindTempSolar.csv\n";
-    std::cout << "5. BST Traversal\n";
-    std::cout << "6. Exit\n";
-
+    std::cout << "5. Exit\n";
+    std::cout << "Enter choice: ";
 }
 
 // Reads an integer from the user.
@@ -143,107 +141,141 @@ void Application::DoOption2()
     }
 }
 
-//Option 3
+// Rounds a value to 2 decimal places.
+static double Round2(double value)
+{
+    return std::floor(value * 100.0 + 0.5) / 100.0;
+}
+
+// Computes sample Pearson correlation coefficient.
+static bool ComputeSPCC(int n, double sumX, double sumY, double sumXY,
+                        double sumX2, double sumY2, double& result)
+{
+    if (n < 2)
+    {
+        return false;
+    }
+
+    double numerator = n * sumXY - sumX * sumY;
+    double denominator = std::sqrt((n * sumX2 - sumX * sumX) *
+                                   (n * sumY2 - sumY * sumY));
+
+    if (denominator == 0.0)
+    {
+        return false;
+    }
+
+    result = numerator / denominator;
+    return true;
+}
+
+// Menu option 3: Sample Pearson Correlation Coefficient for a month.
 void Application::DoOption3()
 {
-    int month, year;
+    int month;
 
     std::cout << "Enter month (1-12): ";
     month = ReadInt();
 
-    std::cout << "Enter year: ";
-    year = ReadInt();
+    if (month < 1 || month > 12)
+    {
+        std::cout << "Invalid month.\n";
+        return;
+    }
 
-    int choice1, choice2;
+    double sumST_x = 0, sumST_y = 0, sumST_xy = 0, sumST_x2 = 0, sumST_y2 = 0;
+    double sumSR_x = 0, sumSR_y = 0, sumSR_xy = 0, sumSR_x2 = 0, sumSR_y2 = 0;
+    double sumTR_x = 0, sumTR_y = 0, sumTR_xy = 0, sumTR_x2 = 0, sumTR_y2 = 0;
 
-    std::cout << "\nSelect first variable:\n";
-    std::cout << "1. Temperature\n2. Wind Speed\n3. Solar Radiation\n";
-    choice1 = ReadInt();
-
-    std::cout << "\nSelect second variable:\n";
-    std::cout << "1. Temperature\n2. Wind Speed\n3. Solar Radiation\n";
-    choice2 = ReadInt();
-
-    double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
-    int n = 0;
+    int nST = 0, nSR = 0, nTR = 0;
 
     for (int i = 0; i < m_log.GetSize(); i++)
     {
         const WeatherRec& rec = m_log.GetRecord(i);
 
-        if (rec.GetDate().GetMonth() == month &&
-            rec.GetDate().GetYear() == year)
+        if (rec.GetDate().GetMonth() != month)
         {
-            double x = 0, y = 0;
-            bool validX = false, validY = false;
+            continue;
+        }
 
-            // X variable
-            if (choice1 == 1 && rec.HasTemp())
-            {
-                x = rec.GetTemperature();
-                validX = true;
-            }
-            else if (choice1 == 2 && rec.HasSpeed())
-            {
-                x = rec.GetSpeed();
-                validX = true;
-            }
-            else if (choice1 == 3 && rec.HasSolar())
-            {
-                x = rec.GetSolarRadiation();
-                validX = true;
-            }
+        if (rec.HasSpeed() && rec.HasTemp())
+        {
+            double x = rec.GetSpeed();
+            double y = rec.GetTemperature();
 
-            // Y variable
-            if (choice2 == 1 && rec.HasTemp())
-            {
-                y = rec.GetTemperature();
-                validY = true;
-            }
-            else if (choice2 == 2 && rec.HasSpeed())
-            {
-                y = rec.GetSpeed();
-                validY = true;
-            }
-            else if (choice2 == 3 && rec.HasSolar())
-            {
-                y = rec.GetSolarRadiation();
-                validY = true;
-            }
+            sumST_x += x;
+            sumST_y += y;
+            sumST_xy += x * y;
+            sumST_x2 += x * x;
+            sumST_y2 += y * y;
+            nST++;
+        }
 
-            if (validX && validY)
-            {
-                sumX += x;
-                sumY += y;
-                sumXY += x * y;
-                sumX2 += x * x;
-                sumY2 += y * y;
-                n++;
-            }
+        if (rec.HasSpeed() && rec.HasSolar())
+        {
+            double x = rec.GetSpeed();
+            double y = rec.GetSolarRadiation();
+
+            sumSR_x += x;
+            sumSR_y += y;
+            sumSR_xy += x * y;
+            sumSR_x2 += x * x;
+            sumSR_y2 += y * y;
+            nSR++;
+        }
+
+        if (rec.HasTemp() && rec.HasSolar())
+        {
+            double x = rec.GetTemperature();
+            double y = rec.GetSolarRadiation();
+
+            sumTR_x += x;
+            sumTR_y += y;
+            sumTR_xy += x * y;
+            sumTR_x2 += x * x;
+            sumTR_y2 += y * y;
+            nTR++;
         }
     }
 
-    if (n < 2)
+    double rST = 0.0, rSR = 0.0, rTR = 0.0;
+    bool okST = ComputeSPCC(nST, sumST_x, sumST_y, sumST_xy, sumST_x2, sumST_y2, rST);
+    bool okSR = ComputeSPCC(nSR, sumSR_x, sumSR_y, sumSR_xy, sumSR_x2, sumSR_y2, rSR);
+    bool okTR = ComputeSPCC(nTR, sumTR_x, sumTR_y, sumTR_xy, sumTR_x2, sumTR_y2, rTR);
+
+    std::cout << "Sample Pearson Correlation Coefficient for "
+              << GetMonthName(month) << "\n";
+
+    std::cout << "S_T: ";
+    if (okST)
     {
-        std::cout << "Not enough data\n";
-        return;
+        std::cout << Round2(rST) << "\n";
+    }
+    else
+    {
+        std::cout << "No Data\n";
     }
 
-    double numerator = n * sumXY - sumX * sumY;
-    double denominator = std::sqrt((n * sumX2 - sumX * sumX) *
-                              (n * sumY2 - sumY * sumY));
-
-    if (denominator == 0)
+    std::cout << "S_R: ";
+    if (okSR)
     {
-        std::cout << "Division by zero error\n";
-        return;
+        std::cout << Round2(rSR) << "\n";
+    }
+    else
+    {
+        std::cout << "No Data\n";
     }
 
-    double r = numerator / denominator;
-
-    std::cout << "\n sPCC Result: " << r << std::endl;
+    std::cout << "T_R: ";
+    if (okTR)
+    {
+        std::cout << Round2(rTR) << "\n";
+    }
+    else
+    {
+        std::cout << "No Data\n";
+    }
 }
-
 
 // Menu option 4 and writes to output CSV file.
 void Application::DoOption4()
@@ -304,22 +336,4 @@ void Application::DoOption4()
 
     out.close();
     std::cout << "WindTempSolar.csv generated successfully.\n";
-}
-
-
-void PrintWeather(const WeatherRec& rec)
-{
-    std::cout << rec << std::endl;
-}
-void Application::DoBST()
-{
-    BST<WeatherRec> tree;
-
-    for (int i = 0; i < m_log.GetSize(); i++)
-    {
-        tree.Insert(m_log.GetRecord(i));
-    }
-
-    std::cout << "\n--- BST Inorder Traversal ---\n";
-    tree.Inorder(PrintWeather);
-}
+} 

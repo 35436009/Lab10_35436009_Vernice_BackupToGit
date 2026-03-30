@@ -1,31 +1,11 @@
 #include "UtilityStats.h"
 #include <cmath>
 
-// Private helpers
-
 // Returns true if the record belongs to the given month and year.
 static bool MatchMonthYear(const WeatherRec& rec, int year, int month)
 {
     return rec.GetDate().GetYear() == year &&
            rec.GetDate().GetMonth() == month;
-}
-
-// Returns true if there is at least one usable solar reading for the month.
-static bool HasUsableSolarForMonth(const WeatherLog& log, int year, int month)
-{
-    for (int i = 0; i < log.GetSize(); ++i)
-    {
-        const WeatherRec& rec = log.GetRecord(i);
-
-        if (MatchMonthYear(rec, year, month) &&
-            rec.HasSolar() &&
-            rec.GetSolarRadiation() >= 100.0)
-        {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 // Computes the mean of a vector of floating-point values.
@@ -38,7 +18,7 @@ float UtilityStats::Mean(const Vector<float>& values)
 
     float sum = 0.0f;
 
-    for (int i = 0; i < values.GetSize(); ++i)
+    for (int i = 0; i < values.GetSize(); i++)
     {
         sum += values[i];
     }
@@ -47,7 +27,6 @@ float UtilityStats::Mean(const Vector<float>& values)
 }
 
 // Computes the sample standard deviation of a vector of floating-point values.
-// Uses the sample standard deviation formula with denominator (n - 1).
 float UtilityStats::StDev(const Vector<float>& values, float mean)
 {
     if (values.GetSize() <= 1)
@@ -57,7 +36,7 @@ float UtilityStats::StDev(const Vector<float>& values, float mean)
 
     float sumSquares = 0.0f;
 
-    for (int i = 0; i < values.GetSize(); ++i)
+    for (int i = 0; i < values.GetSize(); i++)
     {
         float diff = values[i] - mean;
         sumSquares += diff * diff;
@@ -67,7 +46,6 @@ float UtilityStats::StDev(const Vector<float>& values, float mean)
 }
 
 // Computes the mean absolute deviation of a vector of floating-point values.
-// The mean absolute deviation is the average of the absolute differences from the mean.
 float UtilityStats::Mad(const Vector<float>& values, float mean)
 {
     if (values.GetSize() == 0)
@@ -77,7 +55,7 @@ float UtilityStats::Mad(const Vector<float>& values, float mean)
 
     float sumAbs = 0.0f;
 
-    for (int i = 0; i < values.GetSize(); ++i)
+    for (int i = 0; i < values.GetSize(); i++)
     {
         sumAbs += std::fabs(values[i] - mean);
     }
@@ -86,12 +64,11 @@ float UtilityStats::Mad(const Vector<float>& values, float mean)
 }
 
 // Computes the total solar radiation for a specified month and year.
-// Only solar radiation values >= 100 W/m^2 are included.
 double UtilityStats::SolarTotal(const WeatherLog& log, int year, int month)
 {
     double total = 0.0;
 
-    for (int i = 0; i < log.GetSize(); ++i)
+    for (int i = 0; i < log.GetSize(); i++)
     {
         const WeatherRec& rec = log.GetRecord(i);
 
@@ -106,10 +83,10 @@ double UtilityStats::SolarTotal(const WeatherLog& log, int year, int month)
     return total;
 }
 
-//Checks whether any usable data exists for a given month and year.
+// Checks whether any usable data exists for a given month and year.
 bool UtilityStats::HasAnyDataForMonth(const WeatherLog& log, int year, int month)
 {
-    for (int i = 0; i < log.GetSize(); ++i)
+    for (int i = 0; i < log.GetSize(); i++)
     {
         const WeatherRec& rec = log.GetRecord(i);
 

@@ -75,6 +75,7 @@ const char* Application::GetMonthName(int month) const
     {
         return names[month - 1];
     }
+
     return "";
 }
 

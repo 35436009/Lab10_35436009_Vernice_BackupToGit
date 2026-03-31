@@ -58,28 +58,13 @@ void WeatherLog::TraverseYear(int year, void (*visit)(const WeatherRec&)) const
     }
 }
 
-// Retrieves the BST for a given year.
-BST<WeatherRec>* WeatherLog::GetYearTree(int year)
+// Traverses all records across all years in sorted order, for option 3 and 4.
+void WeatherLog::TraverseAllYears(void (*visit)(const WeatherRec&)) const
 {
-    std::map<int, BST<WeatherRec> >::iterator it = m_yearTrees.find(year);
+    std::map<int, BST<WeatherRec> >::const_iterator it;
 
-    if (it == m_yearTrees.end())
+    for (it = m_yearTrees.begin(); it != m_yearTrees.end(); ++it)
     {
-        return NULL;
+        it->second.Inorder(visit);
     }
-
-    return &(it->second);
-}
-
-// Retrieves the BST for a given year.
-const BST<WeatherRec>* WeatherLog::GetYearTree(int year) const
-{
-    std::map<int, BST<WeatherRec> >::const_iterator it = m_yearTrees.find(year);
-
-    if (it == m_yearTrees.end())
-    {
-        return NULL;
-    }
-
-    return &(it->second);
 }

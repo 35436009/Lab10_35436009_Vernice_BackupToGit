@@ -4,6 +4,105 @@
 #include <fstream>
 #include <cmath>
 
+// Helpers for collecting filtered values from yearly traversal.
+// To keep BST clean, the BST callback interface does not pass context.
+static int g_targetYear = 0;
+static int g_targetMonth = 0;
+
+static Vector<float>* g_windValues = NULL;
+static Vector<float>* g_tempValues = NULL;
+
+static double g_sumST_x = 0.0, g_sumST_y = 0.0, g_sumST_xy = 0.0, g_sumST_x2 = 0.0, g_sumST_y2 = 0.0;
+static double g_sumSR_x = 0.0, g_sumSR_y = 0.0, g_sumSR_xy = 0.0, g_sumSR_x2 = 0.0, g_sumSR_y2 = 0.0;
+static double g_sumTR_x = 0.0, g_sumTR_y = 0.0, g_sumTR_xy = 0.0, g_sumTR_x2 = 0.0, g_sumTR_y2 = 0.0;
+static int g_nST = 0, g_nSR = 0, g_nTR = 0;
+static bool g_yearHasData = false;
+
+// Collects wind values for option 1.
+static void CollectWindValues(const WeatherRec& rec)
+{
+    if (rec.GetDate().GetMonth() == g_targetMonth && rec.HasSpeed() && g_windValues != NULL)
+    {
+        g_windValues->Add(static_cast<float>(rec.GetSpeed() * 3.6));
+    }
+}
+
+// Collects temperature values for option 2.
+static void CollectTempValues(const WeatherRec& rec)
+{
+    if (rec.GetDate().GetMonth() >= 1 && rec.GetDate().GetMonth() <= 12 &&
+        rec.HasTemp() && g_tempValues != NULL)
+    {
+        g_tempValues->Add(static_cast<float>(rec.GetTemperature()));
+    }
+}
+
+// Collects wind, temperature, and solar data for option 3.
+static void CollectSPCCValues(const WeatherRec& rec)
+{
+    if (rec.GetDate().GetMonth() != g_targetMonth)
+    {
+        return;
+    }
+
+    if (rec.HasSpeed() && rec.HasTemp())
+    {
+        double x = rec.GetSpeed();
+        double y = rec.GetTemperature();
+        g_sumST_x += x;
+        g_sumST_y += y;
+        g_sumST_xy += x * y;
+        g_sumST_x2 += x * x;
+        g_sumST_y2 += y * y;
+        g_nST++;
+    }
+
+    if (rec.HasSpeed() && rec.HasSolar())
+    {
+        double x = rec.GetSpeed();
+        double y = rec.GetSolarRadiation();
+        g_sumSR_x += x;
+        g_sumSR_y += y;
+        g_sumSR_xy += x * y;
+        g_sumSR_x2 += x * x;
+        g_sumSR_y2 += y * y;
+        g_nSR++;
+    }
+
+    if (rec.HasTemp() && rec.HasSolar())
+    {
+        double x = rec.GetTemperature();
+        double y = rec.GetSolarRadiation();
+        g_sumTR_x += x;
+        g_sumTR_y += y;
+        g_sumTR_xy += x * y;
+        g_sumTR_x2 += x * x;
+        g_sumTR_y2 += y * y;
+        g_nTR++;
+    }
+}
+
+// Collects wind and temperature values for option 4.
+static void CollectWindTempValues(const WeatherRec& rec)
+{
+    if (rec.GetDate().GetYear() != g_targetYear || rec.GetDate().GetMonth() != g_targetMonth)
+    {
+        return;
+    }
+
+    g_yearHasData = true;
+
+    if (rec.HasSpeed() && g_windValues != NULL)
+    {
+        g_windValues->Add(static_cast<float>(rec.GetSpeed() * 3.6));
+    }
+
+    if (rec.HasTemp() && g_tempValues != NULL)
+    {
+        g_tempValues->Add(static_cast<float>(rec.GetTemperature()));
+    }
+}
+
 // Constructor for reference to WeatherLog.
 Application::Application(WeatherLog& log)
     : m_log(log) {}
@@ -123,18 +222,12 @@ void Application::DoOption1()
     }
 
     Vector<float> windValues;
+    g_targetMonth = month;
+    g_windValues = &windValues;
 
-    for (int i = 0; i < m_log.GetSize(); i++)
-    {
-        const WeatherRec& rec = m_log.GetRecord(i);
+    m_log.TraverseYear(year, CollectWindValues);
 
-        if (rec.GetDate().GetYear() == year &&
-            rec.GetDate().GetMonth() == month &&
-            rec.HasSpeed())
-        {
-            windValues.Add(static_cast<float>(rec.GetSpeed() * 3.6));
-        }
-    }
+    g_windValues = NULL;
 
     if (windValues.GetSize() == 0)
     {
@@ -211,61 +304,19 @@ void Application::DoOption3()
     double sumSR_x = 0, sumSR_y = 0, sumSR_xy = 0, sumSR_x2 = 0, sumSR_y2 = 0;
     double sumTR_x = 0, sumTR_y = 0, sumTR_xy = 0, sumTR_x2 = 0, sumTR_y2 = 0;
 
-    int nST = 0, nSR = 0, nTR = 0;
+    g_nST = g_nSR = g_nTR = 0;
 
-    for (int i = 0; i < m_log.GetSize(); i++)
+    for (std::map<int, BST<WeatherRec> >::const_iterator it = m_log.HasYear(0) ? m_log.m_yearTrees.begin() : m_log.m_yearTrees.end();
+         it != m_log.m_yearTrees.end();
+         ++it)
     {
-        const WeatherRec& rec = m_log.GetRecord(i);
-
-        if (rec.GetDate().GetMonth() != month)
-        {
-            continue;
-        }
-
-        if (rec.HasSpeed() && rec.HasTemp())
-        {
-            double x = rec.GetSpeed();
-            double y = rec.GetTemperature();
-
-            sumST_x += x;
-            sumST_y += y;
-            sumST_xy += x * y;
-            sumST_x2 += x * x;
-            sumST_y2 += y * y;
-            nST++;
-        }
-
-        if (rec.HasSpeed() && rec.HasSolar())
-        {
-            double x = rec.GetSpeed();
-            double y = rec.GetSolarRadiation();
-
-            sumSR_x += x;
-            sumSR_y += y;
-            sumSR_xy += x * y;
-            sumSR_x2 += x * x;
-            sumSR_y2 += y * y;
-            nSR++;
-        }
-
-        if (rec.HasTemp() && rec.HasSolar())
-        {
-            double x = rec.GetTemperature();
-            double y = rec.GetSolarRadiation();
-
-            sumTR_x += x;
-            sumTR_y += y;
-            sumTR_xy += x * y;
-            sumTR_x2 += x * x;
-            sumTR_y2 += y * y;
-            nTR++;
-        }
+        m_log.TraverseYear(it->first, CollectSPCCValues);
     }
 
     double rST = 0.0, rSR = 0.0, rTR = 0.0;
-    bool okST = ComputeSPCC(nST, sumST_x, sumST_y, sumST_xy, sumST_x2, sumST_y2, rST);
-    bool okSR = ComputeSPCC(nSR, sumSR_x, sumSR_y, sumSR_xy, sumSR_x2, sumSR_y2, rSR);
-    bool okTR = ComputeSPCC(nTR, sumTR_x, sumTR_y, sumTR_xy, sumTR_x2, sumTR_y2, rTR);
+    bool okST = ComputeSPCC(g_nST, g_sumST_x, g_sumST_y, g_sumST_xy, g_sumST_x2, g_sumST_y2, rST);
+    bool okSR = ComputeSPCC(g_nSR, g_sumSR_x, g_sumSR_y, g_sumSR_xy, g_sumSR_x2, g_sumSR_y2, rSR);
+    bool okTR = ComputeSPCC(g_nTR, g_sumTR_x, g_sumTR_y, g_sumTR_xy, g_sumTR_x2, g_sumTR_y2, rTR);
 
     std::cout << "Sample Pearson Correlation Coefficient for "
               << GetMonthName(month) << "\n";
@@ -323,26 +374,16 @@ void Application::DoOption4()
         Vector<float> windValues;
         Vector<float> tempValues;
 
-        for (int i = 0; i < m_log.GetSize(); i++)
-        {
-            const WeatherRec& rec = m_log.GetRecord(i);
+        g_targetYear = year;
+        g_targetMonth = month;
+        g_yearHasData = false;
+        g_windValues = &windValues;
+        g_tempValues = &tempValues;
 
-            if (rec.GetDate().GetYear() != year ||
-                rec.GetDate().GetMonth() != month)
-            {
-                continue;
-            }
+        m_log.TraverseYear(year, CollectWindTempValues);
 
-            if (rec.HasSpeed())
-            {
-                windValues.Add(static_cast<float>(rec.GetSpeed() * 3.6));
-            }
-
-            if (rec.HasTemp())
-            {
-                tempValues.Add(static_cast<float>(rec.GetTemperature()));
-            }
-        }
+        g_windValues = NULL;
+        g_tempValues = NULL;
 
         double totalSolar = UtilityStats::SolarTotal(m_log, year, month);
 
@@ -374,7 +415,7 @@ void Application::DoOption4()
         {
             float mean = UtilityStats::Mean(tempValues);
             float sd = UtilityStats::StDev(tempValues, mean);
-            float mad = UtilityStats::Mad(tempValues, mean);
+            float mad = UtilityStats::Mad(windValues, mean);
 
             out << Round2(mean) << "(" << Round2(sd) << ", " << Round2(mad) << ")";
         }

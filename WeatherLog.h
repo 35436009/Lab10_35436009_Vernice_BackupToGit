@@ -14,7 +14,7 @@
  * records inside a BST for ordered processing.
  *
  * @author Vernice Foong
- * @version 03
+ * @version 06
  */
 class WeatherLog
 {
@@ -41,57 +41,47 @@ public:
     int GetSize() const;
 
     /**
-     * @brief Returns record at specified logical index.
-     *
-     * The record is retrieved by traversing the yearly BSTs in order.
-     *
-     * @param index Logical position in the full dataset.
-     * @return WeatherRec at index.
-     */
-    const WeatherRec& GetRecord(int index) const;
-
-    /**
      * @brief Checks whether a given year exists in the log.
      * @param year Year to look for.
      * @return True if the year exists, otherwise false.
      */
     bool HasYear(int year) const;
 
+    /**
+     * @brief Checks whether a record with the same date and time exists.
+     * @param date Date to check.
+     * @param time Time to check.
+     * @return True if a matching record exists, otherwise false.
+     */
+    bool RecordExists(const Date& date, const Time& time) const;
+
+    /**
+     * @brief Traverses all records for a given year in sorted order.
+     *
+     * If the year does not exist, nothing is visited.
+     *
+     * @param year Year to traverse.
+     * @param visit Callback function applied to each record.
+     */
+    void TraverseYear(int year, void (*visit)(const WeatherRec&)) const;
+
 private:
     std::map<int, BST<WeatherRec> > m_yearTrees;
+    int m_totalRecords;
 
     /**
-     * @brief Counts how many records exist in a BST.
-     * @param tree The tree to count.
-     * @return Number of records in the tree.
+     * @brief Retrieves the BST for a given year.
+     * @param year Year key.
+     * @return Pointer to the BST if found, otherwise NULL.
      */
-    int CountTree(const BST<WeatherRec>& tree) const;
+    BST<WeatherRec>* GetYearTree(int year);
 
     /**
-     * @brief Retrieves a record from a BST by traversal index.
-     * @param tree The tree to search.
-     * @param targetIndex The requested position.
-     * @param currentIndex Running count during traversal.
-     * @param result The record to return if found.
-     * @return True if the record was found, otherwise false.
+     * @brief Retrieves the BST for a given year.
+     * @param year Year key.
+     * @return Pointer to the BST if found, otherwise NULL.
      */
-    bool GetRecordFromTree(const BST<WeatherRec>& tree,
-                           int targetIndex,
-                           int& currentIndex,
-                           WeatherRec& result) const;
-
-    /**
-     * @brief Collects records from a BST using inorder traversal.
-     * @param tree The tree to traverse.
-     * @param targetIndex The requested position.
-     * @param currentIndex Running count during traversal.
-     * @param result The record to return if found.
-     * @return True if the record was found, otherwise false.
-     */
-    bool GetRecordFromTreeInorder(const BST<WeatherRec>& tree,
-                                  int targetIndex,
-                                  int& currentIndex,
-                                  WeatherRec& result) const;
+    const BST<WeatherRec>* GetYearTree(int year) const;
 };
 
 #endif

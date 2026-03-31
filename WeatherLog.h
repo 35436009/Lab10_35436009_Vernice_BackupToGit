@@ -65,23 +65,19 @@ public:
      */
     void TraverseYear(int year, void (*visit)(const WeatherRec&)) const;
 
+    /**
+     * @brief Traverses all records across all years in sorted order.
+     *
+     * Records are visited year by year in ascending order.
+     *
+     * @param visit Callback function applied to each record.
+     */
+    void TraverseAllYears(void (*visit)(const WeatherRec&)) const;
+
 private:
     std::map<int, BST<WeatherRec> > m_yearTrees;
     int m_totalRecords;
 
-    /**
-     * @brief Retrieves the BST for a given year.
-     * @param year Year key.
-     * @return Pointer to the BST if found, otherwise NULL.
-     */
-    BST<WeatherRec>* GetYearTree(int year);
-
-    /**
-     * @brief Retrieves the BST for a given year.
-     * @param year Year key.
-     * @return Pointer to the BST if found, otherwise NULL.
-     */
-    const BST<WeatherRec>* GetYearTree(int year) const;
 };
 
 #endif

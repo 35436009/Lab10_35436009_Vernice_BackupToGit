@@ -2,6 +2,7 @@
 
 // Default constructor.
 WeatherLog::WeatherLog()
+    : m_totalRecords(0)
 {
     // Map starts empty and trees are created on demand.
 }
@@ -17,47 +18,13 @@ void WeatherLog::AddRecord(const WeatherRec& rec)
     }
 
     m_yearTrees[year].Insert(rec);
+    m_totalRecords++;
 }
 
 // Returns number of stored records across all years.
 int WeatherLog::GetSize() const
 {
-    int total = 0;
-
-    for (std::map<int, BST<WeatherRec> >::const_iterator it = m_yearTrees.begin();
-         it != m_yearTrees.end();
-         ++it)
-    {
-        total += CountTree(it->second);
-    }
-
-    return total;
-}
-
-// Returns record at given logical index.
-const WeatherRec& WeatherLog::GetRecord(int index) const
-{
-    static WeatherRec dummy;
-    int currentIndex = 0;
-
-    if (index < 0)
-    {
-        return dummy;
-    }
-
-    for (std::map<int, BST<WeatherRec> >::const_iterator it = m_yearTrees.begin();
-         it != m_yearTrees.end();
-         ++it)
-    {
-        WeatherRec result;
-
-        if (GetRecordFromTree(it->second, index, currentIndex, result))
-        {
-            return result;
-        }
-    }
-
-    return dummy;
+    return m_totalRecords;
 }
 
 // Checks whether a given year exists in the log.
@@ -66,43 +33,53 @@ bool WeatherLog::HasYear(int year) const
     return m_yearTrees.find(year) != m_yearTrees.end();
 }
 
-// Counts how many records exist in a BST.
-int WeatherLog::CountTree(const BST<WeatherRec>& tree) const
+// Checks whether a record with the same date and time exists.
+bool WeatherLog::RecordExists(const Date& date, const Time& time) const
 {
-    int count = 0;
-    int currentIndex = 0;
-    WeatherRec result;
+    std::map<int, BST<WeatherRec> >::const_iterator it = m_yearTrees.find(date.GetYear());
 
-    while (GetRecordFromTreeInorder(tree, count, currentIndex, result))
+    if (it == m_yearTrees.end())
     {
-        count++;
+        return false;
     }
 
-    return count;
+    WeatherRec probe(date, time);
+    return it->second.Search(probe);
 }
 
-// Retrieves a record from a BST by traversal index.
-bool WeatherLog::GetRecordFromTree(const BST<WeatherRec>& tree,
-                                  int targetIndex,
-                                  int& currentIndex,
-                                  WeatherRec& result) const
+// Traverses all records for a given year in sorted order.
+void WeatherLog::TraverseYear(int year, void (*visit)(const WeatherRec&)) const
 {
-    return GetRecordFromTreeInorder(tree, targetIndex, currentIndex, result);
-}
+    std::map<int, BST<WeatherRec> >::const_iterator it = m_yearTrees.find(year);
 
-// Collects records from a BST using inorder traversal.
-bool WeatherLog::GetRecordFromTreeInorder(const BST<WeatherRec>& tree,
-                                          int targetIndex,
-                                          int& currentIndex,
-                                          WeatherRec& result) const
-{
-    struct VisitorState
+    if (it != m_yearTrees.end())
     {
-        int target;
-        int* current;
-        WeatherRec* found;
-        bool* ok;
-    };
+        it->second.Inorder(visit);
+    }
+}
 
-    return false;
+// Retrieves the BST for a given year.
+BST<WeatherRec>* WeatherLog::GetYearTree(int year)
+{
+    std::map<int, BST<WeatherRec> >::iterator it = m_yearTrees.find(year);
+
+    if (it == m_yearTrees.end())
+    {
+        return NULL;
+    }
+
+    return &(it->second);
+}
+
+// Retrieves the BST for a given year.
+const BST<WeatherRec>* WeatherLog::GetYearTree(int year) const
+{
+    std::map<int, BST<WeatherRec> >::const_iterator it = m_yearTrees.find(year);
+
+    if (it == m_yearTrees.end())
+    {
+        return NULL;
+    }
+
+    return &(it->second);
 }

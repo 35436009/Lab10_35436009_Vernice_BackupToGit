@@ -9,7 +9,7 @@
  * Stores: data, left, right
  *
  * @author Vernice Foong
- * @version 04
+ * @version 05
  *
  * @param T Type of the data stored in the node.
  */
@@ -32,6 +32,9 @@ public:
  * @class BST
  * @brief Represents a binary search tree.
  *
+ * The BST stores data in sorted order and uses recursive routines
+ * for insertion, search, deletion, and traversal.
+ *
  * @param T Type of the data stored in the tree.
  */
 template <class T>
@@ -43,6 +46,8 @@ private:
     /**
      * @brief Helper for Insert function.
      * @param node Current subtree root.
+     * @param value Value to insert.
+     * @param inserted Set to true if insertion succeeds.
      * @return The updated subtree root.
      */
     Node<T>* Insert(Node<T>* node, T value, bool& inserted);
@@ -50,6 +55,7 @@ private:
     /**
      * @brief Helper for Search function.
      * @param node Current subtree root.
+     * @param value Value to search for.
      * @return True if value is found, false otherwise.
      */
     bool Search(Node<T>* node, T value) const;
@@ -57,48 +63,50 @@ private:
     /**
      * @brief Helper for Delete function.
      * @param node Current subtree root.
+     * @param value Value to delete.
+     * @param deleted Set to true if deletion succeeds.
      * @return The updated subtree root.
      */
     Node<T>* Delete(Node<T>* node, T value, bool& deleted);
 
     /**
-     * @brief Function to find smallest node in a subtree.
+     * @brief Finds the smallest node in a subtree.
      * @param node Subtree root.
      * @return Pointer to the node with the smallest value.
      */
     Node<T>* FindMin(Node<T>* node) const;
 
     /**
-     * @brief Helper for Inorder traversal.
+     * @brief Helper for inorder traversal.
      * @param node Current subtree root.
      * @param visit Function callback.
      */
     void Inorder(Node<T>* node, void (*visit)(const T&)) const;
 
     /**
-     * @brief Helper for Preorder traversal.
+     * @brief Helper for preorder traversal.
      * @param node Current subtree root.
      * @param visit Function callback.
      */
     void Preorder(Node<T>* node, void (*visit)(const T&)) const;
 
     /**
-     * @brief Helper for Postorder traversal.
+     * @brief Helper for postorder traversal.
      * @param node Current subtree root.
      * @param visit Function callback.
      */
     void Postorder(Node<T>* node, void (*visit)(const T&)) const;
 
     /**
-     * @brief Function to recursively delete all nodes in the subtree.
+     * @brief Recursively deletes all nodes in the subtree.
      * @param node Current subtree root.
      */
     void DeleteTree(Node<T>* node);
 
     /**
-     * @brief Helper to copy a subtree.
+     * @brief Recursively copies a subtree.
      * @param node Subtree to copy.
-     * @return Pointer to the new copied subtree.
+     * @return Pointer to the copied subtree.
      */
     Node<T>* CopyTree(Node<T>* node) const;
 

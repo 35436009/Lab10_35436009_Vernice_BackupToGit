@@ -2,31 +2,32 @@
 #define WEATHERREC_H
 #include "Date.h"
 #include "Time.h"
+#include <ostream>
 
 /**
  * @class WeatherRec
  * @brief Represents a single 10-min weather record.
  *
- * Stores:Date, Time, Wind Speed (m/s), SR, T, and optional sensor values.
+ * Stores: Date, Time, Wind Speed (m/s), SR, T, and optional sensor values.
  *
  * @author Vernice Foong
- * @version 01
+ * @version 02
  */
-
 class WeatherRec
 {
 public:
 
     /**
-     * @brief Default constructor
+     * @brief Default constructor.
      */
     WeatherRec();
 
     /**
-     * @brief Parameterized constructor
+     * @brief Parameterized constructor.
+     * @param date Date of the record.
+     * @param time Time of the record.
      */
     WeatherRec(const Date& date, const Time& time);
-
 
     /**
      * @brief Gets the date.
@@ -38,7 +39,7 @@ public:
      * @brief Sets the date.
      * @param date New date.
      */
-    void SetDate(const Date & date);
+    void SetDate(const Date& date);
 
     /**
      * @brief Gets the time.
@@ -50,11 +51,11 @@ public:
      * @brief Sets the time.
      * @param time New time.
      */
-    void SetTime(const Time & time);
+    void SetTime(const Time& time);
 
     /**
      * @brief Checks if wind speed value is valid.
-     * @return true if wind speed exists.
+     * @return True if wind speed exists.
      */
     bool HasSpeed() const;
 
@@ -67,12 +68,13 @@ public:
     /**
      * @brief Sets wind speed.
      * @param speed Wind speed in m/s.
+     * @param valid True if value is valid.
      */
     void SetSpeed(double speed, bool valid);
 
     /**
      * @brief Checks if solar radiation value is valid.
-     * @return true if solar radiation exists.
+     * @return True if solar radiation exists.
      */
     bool HasSolar() const;
 
@@ -85,14 +87,15 @@ public:
     /**
      * @brief Sets solar radiation.
      * @param solar Solar radiation value.
+     * @param valid True if value is valid.
      */
     void SetSolarRadiation(double solar, bool valid);
 
     /**
      * @brief Checks if temperature value is valid.
-     * @return true if temperature exists.
+     * @return True if temperature exists.
      */
-     bool HasTemp() const;
+    bool HasTemp() const;
 
     /**
      * @brief Gets temperature.
@@ -103,37 +106,30 @@ public:
     /**
      * @brief Sets temperature.
      * @param temperature Ambient air temperature.
+     * @param valid True if value is valid.
      */
     void SetTemperature(double temperature, bool valid);
 
-bool operator<(const WeatherRec& other) const
-{
-    if (m_date.GetYear() != other.m_date.GetYear())
-        return m_date.GetYear() < other.m_date.GetYear();
+    /**
+     * @brief Compares two weather records by full timestamp.
+     * @param other Another record.
+     * @return True if this record is earlier than other.
+     */
+    bool operator<(const WeatherRec& other) const;
 
-    if (m_date.GetMonth() != other.m_date.GetMonth())
-        return m_date.GetMonth() < other.m_date.GetMonth();
+    /**
+     * @brief Checks whether two records have the same full timestamp.
+     * @param other Another record.
+     * @return True if timestamps match.
+     */
+    bool operator==(const WeatherRec& other) const;
 
-    return m_date.GetDay() < other.m_date.GetDay();
-}
-
-bool operator==(const WeatherRec& other) const
-{
-    return m_date.GetYear() == other.m_date.GetYear() &&
-           m_date.GetMonth() == other.m_date.GetMonth() &&
-           m_date.GetDay() == other.m_date.GetDay();
-}
-
-bool operator>(const WeatherRec& other) const
-{
-    if (m_date.GetYear() != other.m_date.GetYear())
-        return m_date.GetYear() > other.m_date.GetYear();
-
-    if (m_date.GetMonth() != other.m_date.GetMonth())
-        return m_date.GetMonth() > other.m_date.GetMonth();
-
-    return m_date.GetDay() > other.m_date.GetDay();
-}
+    /**
+     * @brief Compares two weather records by full timestamp.
+     * @param other Another record.
+     * @return True if this record is later than other.
+     */
+    bool operator>(const WeatherRec& other) const;
 
 private:
     Date m_date;
@@ -148,7 +144,12 @@ private:
     bool m_hasTemp;
 };
 
-// Stream output so WeatherRec can be printed in TestVector
+/**
+ * @brief Outputs a WeatherRec to a stream.
+ * @param os Output stream.
+ * @param rec Weather record.
+ * @return Output stream.
+ */
 std::ostream& operator<<(std::ostream& os, const WeatherRec& rec);
 
 #endif

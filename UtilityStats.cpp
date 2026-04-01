@@ -1,13 +1,6 @@
 #include "UtilityStats.h"
 #include <cmath>
 
-// Returns true if the record belongs to the given month and year.
-static bool MatchMonthYear(const WeatherRec& rec, int year, int month)
-{
-    return rec.GetDate().GetYear() == year &&
-           rec.GetDate().GetMonth() == month;
-}
-
 // Computes the mean of a vector of floating-point values.
 float UtilityStats::Mean(const Vector<float>& values)
 {
@@ -63,46 +56,83 @@ float UtilityStats::Mad(const Vector<float>& values, float mean)
     return sumAbs / values.GetSize();
 }
 
-// Computes the total solar radiation for a specified month and year.
-double UtilityStats::SolarTotal(const WeatherLog& log, int year, int month)
+// Computes the sample Pearson correlation coefficient.
+bool UtilityStats::ComputeSPCC(const Vector<double>& xValues,
+                               const Vector<double>& yValues,
+                               double& result)
 {
-    double total = 0.0;
-
-    for (int i = 0; i < log.GetSize(); i++)
+    if (xValues.GetSize() != yValues.GetSize())
     {
-        const WeatherRec& rec = log.GetRecord(i);
-
-        if (MatchMonthYear(rec, year, month) &&
-            rec.HasSolar() &&
-            rec.GetSolarRadiation() >= 100.0)
-        {
-            total += rec.GetSolarRadiation() / 6000.0;
-        }
+        return false;
+    }
+    else if (xValues.GetSize() <= 1)
+    {
+        return false;
     }
 
-    return total;
+    double sumX = 0.0;
+    double sumY = 0.0;
+    double sumXY = 0.0;
+    double sumX2 = 0.0;
+    double sumY2 = 0.0;
+
+    for (int i = 0; i < xValues.GetSize(); i++)
+    {
+        double x = xValues[i];
+        double y = yValues[i];
+
+        sumX += x;
+        sumY += y;
+        sumXY += x * y;
+        sumX2 += x * x;
+        sumY2 += y * y;
+    }
+
+    double numerator = xValues.GetSize() * sumXY - sumX * sumY;
+    double denominator = std::sqrt((xValues.GetSize() * sumX2 - sumX * sumX) *
+                                    (xValues.GetSize() * sumY2 - sumY * sumY));
+
+    if (denominator == 0.0)
+    {
+        return false;
+    }
+    else
+    {
+        result = numerator / denominator;
+        return true;
+    }
 }
 
-// Checks whether any usable data exists for a given month and year.
-bool UtilityStats::HasAnyDataForMonth(const WeatherLog& log, int year, int month)
+// Builds a monthly summary object.
+MonthlySummary UtilityStats::BuildMonthlySummary(int year,
+                                                 int month,
+                                                 float meanSpeed,
+                                                 float speedStDev,
+                                                 float speedMad,
+                                                 float meanTemp,
+                                                 float tempStDev,
+                                                 float tempMad,
+                                                 double solarTotal,
+                                                 double spccST,
+                                                 double spccSR,
+                                                 double spccTR,
+                                                 bool hasData)
 {
-    for (int i = 0; i < log.GetSize(); i++)
-    {
-        const WeatherRec& rec = log.GetRecord(i);
+    MonthlySummary summary;
 
-        if (MatchMonthYear(rec, year, month))
-        {
-            if (rec.HasSpeed() || rec.HasTemp())
-            {
-                return true;
-            }
+    summary.SetYear(year);
+    summary.SetMonth(month);
+    summary.SetMeanSpeed(meanSpeed);
+    summary.SetSpeedStDev(speedStDev);
+    summary.SetSpeedMad(speedMad);
+    summary.SetMeanTemp(meanTemp);
+    summary.SetTempStDev(tempStDev);
+    summary.SetTempMad(tempMad);
+    summary.SetSolarTotal(solarTotal);
+    summary.SetSPCCSpeedTemp(spccST);
+    summary.SetSPCCSpeedSolar(spccSR);
+    summary.SetSPCCTempSolar(spccTR);
+    summary.SetHasData(hasData);
 
-            if (rec.HasSolar() && rec.GetSolarRadiation() >= 100.0)
-            {
-                return true;
-            }
-        }
-    }
-
-    return false;
+    return summary;
 }

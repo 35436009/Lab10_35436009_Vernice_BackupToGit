@@ -26,8 +26,8 @@ WeatherRec::WeatherRec(const Date& date, const Time& time)
     m_hasTemp = false;
 }
 
-// Gets the date.
-Date WeatherRec::GetDate() const
+// Get the date.
+const Date& WeatherRec::GetDate() const
 {
     return m_date;
 }
@@ -38,8 +38,8 @@ void WeatherRec::SetDate(const Date& date)
     m_date = date;
 }
 
-// Gets the time.
-Time WeatherRec::GetTime() const
+// Get the time.
+const Time& WeatherRec::GetTime() const
 {
     return m_time;
 }
@@ -50,7 +50,7 @@ void WeatherRec::SetTime(const Time& time)
     m_time = time;
 }
 
-// Checks if wind speed value is valid.
+// Check whether wind speed is available.
 bool WeatherRec::HasSpeed() const
 {
     return m_hasSpeed;
@@ -62,14 +62,14 @@ double WeatherRec::GetSpeed() const
     return m_speed;
 }
 
-// Sets wind speed.
+// Sets wind speed and validity.
 void WeatherRec::SetSpeed(double speed, bool valid)
 {
     m_speed = speed;
     m_hasSpeed = valid;
 }
 
-// Checks if solar radiation value is valid.
+// Check whether solar radiation is available.
 bool WeatherRec::HasSolar() const
 {
     return m_hasSolar;
@@ -81,14 +81,14 @@ double WeatherRec::GetSolarRadiation() const
     return m_solarRadiation;
 }
 
-// Sets solar radiation.
+// Sets solar radiation and validity.
 void WeatherRec::SetSolarRadiation(double solar, bool valid)
 {
     m_solarRadiation = solar;
     m_hasSolar = valid;
 }
 
-// Checks if temperature value is valid.
+// Check whether temperature is available.
 bool WeatherRec::HasTemp() const
 {
     return m_hasTemp;
@@ -100,54 +100,88 @@ double WeatherRec::GetTemperature() const
     return m_temperature;
 }
 
-// Sets temperature.
+// Sets temperature and validity.
 void WeatherRec::SetTemperature(double temperature, bool valid)
 {
     m_temperature = temperature;
     m_hasTemp = valid;
 }
 
-// Compares two weather records by full timestamp.
+// Compares two weather records by timestamp.
 bool WeatherRec::operator<(const WeatherRec& other) const
 {
-    if (m_date.GetYear() != other.m_date.GetYear())
-        return m_date.GetYear() < other.m_date.GetYear();
-
-    if (m_date.GetMonth() != other.m_date.GetMonth())
-        return m_date.GetMonth() < other.m_date.GetMonth();
-
-    if (m_date.GetDay() != other.m_date.GetDay())
-        return m_date.GetDay() < other.m_date.GetDay();
-
-    if (m_time.GetHour() != other.m_time.GetHour())
-        return m_time.GetHour() < other.m_time.GetHour();
-
-    return m_time.GetMinute() < other.m_time.GetMinute();
+    if (m_date < other.m_date)
+    {
+        return true;
+    }
+    else if (m_date > other.m_date)
+    {
+        return false;
+    }
+    else
+    {
+        if (m_time < other.m_time)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
 }
 
-// Checks whether two records have the same full timestamp.
+// Checks whether two records have the same timestamp.
 bool WeatherRec::operator==(const WeatherRec& other) const
 {
-    return m_date.GetYear() == other.m_date.GetYear() &&
-           m_date.GetMonth() == other.m_date.GetMonth() &&
-           m_date.GetDay() == other.m_date.GetDay() &&
-           m_time.GetHour() == other.m_time.GetHour() &&
-           m_time.GetMinute() == other.m_time.GetMinute();
+    if (m_date == other.m_date)
+    {
+        if (m_time == other.m_time)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    else
+    {
+        return false;
+    }
 }
 
-// Compares two weather records by full timestamp.
+// Compares two weather records by timestamp.
 bool WeatherRec::operator>(const WeatherRec& other) const
 {
-    return other < *this;
+    if (m_date > other.m_date)
+    {
+        return true;
+    }
+    else if (m_date < other.m_date)
+    {
+        return false;
+    }
+    else
+    {
+        if (m_time > other.m_time)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
 }
 
-// Outputs a WeatherRec to a stream.
+// Outputs a weather record to a stream.
 std::ostream& operator<<(std::ostream& os, const WeatherRec& rec)
 {
-    os << rec.GetDate().GetDay() << "/"
-       << rec.GetDate().GetMonth() << "/"
-       << rec.GetDate().GetYear() << " "
-       << rec.GetTime().GetHour() << ":"
-       << rec.GetTime().GetMinute();
+    os << rec.GetDate() << " " << rec.GetTime();
+    os << " Speed=" << rec.GetSpeed();
+    os << " Solar=" << rec.GetSolarRadiation();
+    os << " Temp=" << rec.GetTemperature();
+
     return os;
 }

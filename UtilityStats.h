@@ -1,82 +1,86 @@
-#ifndef UTILITYSTATS_H_INCLUDED
-#define UTILITYSTATS_H_INCLUDED
+#ifndef UTILITYSTATS_H
+#define UTILITYSTATS_H
 
 #include "Vector.h"
-#include "WeatherLog.h"
+#include "MonthlySummary.h"
 
 /**
  * @class UtilityStats
- * @brief Utility class for performing statistical calculations.
+ * @brief Provides statistical calculations for weather data.
  *
- * This class contains only static methods.
- *
- * Responsibilities:
- * - Compute mean and sample standard deviation
- * - Compute mean absolute deviation
- * - Compute monthly solar total
- * - Check if any data exists for a month
- *
- * Rules:
- * - Statistical routines operate on Vector<float>, not on weather types.
- * - Wind speed values should be converted to km/h before being passed in.
- * - Solar radiation: only include values >= 100 W/m^2, convert each 10-minute reading to kWh/m^2
- *   using SR / 6000 and sum per month.
+ * This class contains only static helper functions for computations.
+ * It does not load files or store records.
  *
  * @author Vernice Foong
- * @version 05
+ * @version 04
  */
 class UtilityStats
 {
 public:
     /**
      * @brief Computes the mean of a vector of floating-point values.
-     *
-     * @param values The vector of values to average.
-     * @return The arithmetic mean of the values, or 0.0f if the vector is empty.
+     * @param values Vector of values.
+     * @return Mean value, or 0.0 if the vector is empty.
      */
     static float Mean(const Vector<float>& values);
 
     /**
      * @brief Computes the sample standard deviation of a vector of floating-point values.
-     *
-     * Uses the sample standard deviation formula with denominator (n - 1).
-     *
-     * @param values The vector of values to process.
-     * @param mean The precomputed mean of the values.
-     * @return The sample standard deviation, or 0.0f if the vector has fewer than 2 values.
+     * @param values Vector of values.
+     * @param mean Precomputed mean value.
+     * @return Sample standard deviation, or 0.0 if not enough values.
      */
     static float StDev(const Vector<float>& values, float mean);
 
     /**
      * @brief Computes the mean absolute deviation of a vector of floating-point values.
-     *
-     * The mean absolute deviation is the average of the absolute differences from the mean.
-     *
-     * @param values The vector of values to process.
-     * @param mean The precomputed mean of the values.
-     * @return The mean absolute deviation, or 0.0f if the vector is empty.
+     * @param values Vector of values.
+     * @param mean Precomputed mean value.
+     * @return Mean absolute deviation, or 0.0 if the vector is empty.
      */
     static float Mad(const Vector<float>& values, float mean);
 
     /**
-     * @brief Computes the total solar radiation for a specified month and year.
-     *
-     * @param log Reference to WeatherLog containing all records.
-     * @param year The year to filter.
-     * @param month The month to filter (1~12).
-     * @return The total solar radiation in kWh/m^2.
+     * @brief Computes the sample Pearson correlation coefficient.
+     * @param xValues First data series.
+     * @param yValues Second data series.
+     * @param result Output correlation result.
+     * @return True if the calculation succeeds, otherwise false.
      */
-    static double SolarTotal(const WeatherLog& log, int year, int month);
+    static bool ComputeSPCC(const Vector<double>& xValues,
+                            const Vector<double>& yValues,
+                            double& result);
 
     /**
-     * @brief Checks whether any usable data exists for a given month and year.
-     *
-     * @param log Reference to WeatherLog containing all records.
-     * @param year The year to filter.
-     * @param month The month to filter (1~12).
-     * @return true if the month contains usable data; false otherwise.
+     * @brief Builds a monthly summary object.
+     * @param year Year of the summary.
+     * @param month Month of the summary.
+     * @param meanSpeed Mean wind speed.
+     * @param speedStDev Wind speed standard deviation.
+     * @param speedMad Wind speed mean absolute deviation.
+     * @param meanTemp Mean temperature.
+     * @param tempStDev Temperature standard deviation.
+     * @param tempMad Temperature mean absolute deviation.
+     * @param solarTotal Total solar radiation.
+     * @param spccST SPCC for speed and temperature.
+     * @param spccSR SPCC for speed and solar radiation.
+     * @param spccTR SPCC for temperature and solar radiation.
+     * @param hasData True if the month has usable data.
+     * @return Filled MonthlySummary object.
      */
-    static bool HasAnyDataForMonth(const WeatherLog& log, int year, int month);
+    static MonthlySummary BuildMonthlySummary(int year,
+                                              int month,
+                                              float meanSpeed,
+                                              float speedStDev,
+                                              float speedMad,
+                                              float meanTemp,
+                                              float tempStDev,
+                                              float tempMad,
+                                              double solarTotal,
+                                              double spccST,
+                                              double spccSR,
+                                              double spccTR,
+                                              bool hasData);
 };
 
 #endif

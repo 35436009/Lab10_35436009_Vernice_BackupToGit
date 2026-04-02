@@ -32,9 +32,6 @@ public:
  * @class BST
  * @brief Represents a binary search tree.
  *
- * The BST stores data in sorted order and uses recursive routines
- * for insertion, search, deletion, and traversal.
- *
  * @param T Type of the data stored in the tree.
  */
 template <class T>
@@ -46,8 +43,6 @@ private:
     /**
      * @brief Helper for Insert function.
      * @param node Current subtree root.
-     * @param value Value to insert.
-     * @param inserted Set to true if insertion succeeds.
      * @return The updated subtree root.
      */
     Node<T>* Insert(Node<T>* node, T value, bool& inserted);
@@ -55,7 +50,6 @@ private:
     /**
      * @brief Helper for Search function.
      * @param node Current subtree root.
-     * @param value Value to search for.
      * @return True if value is found, false otherwise.
      */
     bool Search(Node<T>* node, T value) const;
@@ -63,50 +57,44 @@ private:
     /**
      * @brief Helper for Delete function.
      * @param node Current subtree root.
-     * @param value Value to delete.
-     * @param deleted Set to true if deletion succeeds.
      * @return The updated subtree root.
      */
     Node<T>* Delete(Node<T>* node, T value, bool& deleted);
 
     /**
-     * @brief Finds the smallest node in a subtree.
+     * @brief Function to find smallest node in a subtree.
      * @param node Subtree root.
      * @return Pointer to the node with the smallest value.
      */
     Node<T>* FindMin(Node<T>* node) const;
 
     /**
-     * @brief Helper for inorder traversal.
+     * @brief Helper for Inorder traversal.
      * @param node Current subtree root.
-     * @param visit Function callback.
      */
     void Inorder(Node<T>* node, void (*visit)(const T&)) const;
-
-    /**
-     * @brief Helper for preorder traversal.
+     /**
+  *@brief Helper for Preorder traversal.
      * @param node Current subtree root.
-     * @param visit Function callback.
      */
-    void Preorder(Node<T>* node, void (*visit)(const T&)) const;
+    void Preorder(Node<T>* node) const;
 
     /**
-     * @brief Helper for postorder traversal.
+     * @brief Helper for Postorder traversal.
      * @param node Current subtree root.
-     * @param visit Function callback.
      */
-    void Postorder(Node<T>* node, void (*visit)(const T&)) const;
+    void Postorder(Node<T>* node) const;
 
     /**
-     * @brief Recursively deletes all nodes in the subtree.
+     * @brief Function to recursively delete all nodes in the subtree.
      * @param node Current subtree root.
      */
     void DeleteTree(Node<T>* node);
 
     /**
-     * @brief Recursively copies a subtree.
+     * @brief Helper to copy a subtree.
      * @param node Subtree to copy.
-     * @return Pointer to the copied subtree.
+     * @return Pointer to the new copied subtree.
      */
     Node<T>* CopyTree(Node<T>* node) const;
 
@@ -152,20 +140,20 @@ public:
      */
     bool Delete(T value);
 
+    // Traversals
     /**
-     * @brief Performs inorder traversal using a callback.
+     * @brief Performs inorder traversal and prints nodes.
      */
     void Inorder(void (*visit)(const T&)) const;
+     /**
+     * @brief Performs preorder traversal and prints nodes.
+     */
+    void Preorder() const;
 
     /**
-     * @brief Performs preorder traversal using a callback.
+     * @brief Performs postorder traversal and prints nodes.
      */
-    void Preorder(void (*visit)(const T&)) const;
-
-    /**
-     * @brief Performs postorder traversal using a callback.
-     */
-    void Postorder(void (*visit)(const T&)) const;
+    void Postorder() const;
 
     /**
      * @brief Deletes the entire tree.
@@ -229,7 +217,7 @@ Node<T>* BST<T>::Insert(Node<T>* node, T value, bool& inserted)
         inserted = true;
         return new Node<T>(value);
     }
-
+    //Handles duplicate values, if exist, don't insert
     if (value < node->data)
     {
         node->left = Insert(node->left, value, inserted);
@@ -356,9 +344,7 @@ template <class T>
 void BST<T>::Inorder(Node<T>* node, void (*visit)(const T&)) const
 {
     if (node == NULL)
-    {
         return;
-    }
 
     Inorder(node->left, visit);
     visit(node->data);
@@ -366,41 +352,41 @@ void BST<T>::Inorder(Node<T>* node, void (*visit)(const T&)) const
 }
 
 template <class T>
-void BST<T>::Preorder(void (*visit)(const T&)) const
+void BST<T>::Preorder() const
 {
-    Preorder(root, visit);
+    Preorder(root);
 }
 
 template <class T>
-void BST<T>::Preorder(Node<T>* node, void (*visit)(const T&)) const
+void BST<T>::Preorder(Node<T>* node) const
 {
     if (node == NULL)
     {
         return;
     }
 
-    visit(node->data);
-    Preorder(node->left, visit);
-    Preorder(node->right, visit);
+    std::cout << node->data << " ";
+    Preorder(node->left);
+    Preorder(node->right);
 }
 
 template <class T>
-void BST<T>::Postorder(void (*visit)(const T&)) const
+void BST<T>::Postorder() const
 {
-    Postorder(root, visit);
+    Postorder(root);
 }
 
 template <class T>
-void BST<T>::Postorder(Node<T>* node, void (*visit)(const T&)) const
+void BST<T>::Postorder(Node<T>* node) const
 {
     if (node == NULL)
     {
         return;
     }
 
-    Postorder(node->left, visit);
-    Postorder(node->right, visit);
-    visit(node->data);
+    Postorder(node->left);
+    Postorder(node->right);
+    std::cout << node->data << " ";
 }
 
 template <class T>

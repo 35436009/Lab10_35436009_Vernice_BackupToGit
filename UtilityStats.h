@@ -1,86 +1,120 @@
-#ifndef UTILITYSTATS_H
-#define UTILITYSTATS_H
+#ifndef UTILITYSTATS_H_INCLUDED
+#define UTILITYSTATS_H_INCLUDED
 
-#include "Vector.h"
-#include "MonthlySummary.h"
+#include "WeatherLog.h"
 
 /**
  * @class UtilityStats
- * @brief Provides statistical calculations for weather data.
+ * @brief Utility class for performing statistical calculations.
  *
- * This class contains only static helper functions for computations.
- * It does not load files or store records.
+ * This class contains only static methods.
+ * It does not store data and performs no input/output.
+ *
+ * Responsibilities:
+ * - Compute wind mean and sample SD
+ * - Compute temperature mean and sample SD
+ * - Compute monthly solar total
+ * - Check if any data exists for a month
+* Rules:
+ * - Wind speed: output in km/h (input stored in m/s)
+ * - Solar radiation: only include values >= 100 W/m^2, convert each 10-min reading to kWh/m^2
+ *   using SR / 6000 and sum per month
  *
  * @author Vernice Foong
- * @version 04
+ * @version 02
  */
 class UtilityStats
 {
 public:
-    /**
-     * @brief Computes the mean of a vector of floating-point values.
-     * @param values Vector of values.
-     * @return Mean value, or 0.0 if the vector is empty.
-     */
-    static float Mean(const Vector<float>& values);
 
     /**
-     * @brief Computes the sample standard deviation of a vector of floating-point values.
-     * @param values Vector of values.
-     * @param mean Precomputed mean value.
-     * @return Sample standard deviation, or 0.0 if not enough values.
+     * @brief Computes the mean wind speed (km/h) for a specified month and year.
+     *
+     * Wind speed values are stored internally in m/s.
+     * This function converts them to km/h before calculating the average.
+     * Only valid wind readings are included.
+     *
+     * @param log   Reference to WeatherLog containing all records.
+     * @param year  The year to filter.
+     * @param month The month to filter (1~12).
+     * @return The mean wind speed in km/h.
      */
-    static float StDev(const Vector<float>& values, float mean);
+    static double MeanWind(const WeatherLog& log, int year, int month);
 
     /**
-     * @brief Computes the mean absolute deviation of a vector of floating-point values.
-     * @param values Vector of values.
-     * @param mean Precomputed mean value.
-     * @return Mean absolute deviation, or 0.0 if the vector is empty.
+     *@brief Computes the sample standard deviation of wind speed (km/h).
+     *
+     * Uses the sample standard deviation formula (n - 1).
+     * Wind values are converted from m/s to km/h before computation.
+     * Only valid wind readings are included.
+     *
+     * @param log   Reference to WeatherLog containing all records.
+     * @param year  The year to filter.
+     * @param month The month to filter (1~12).
+     * @param mean  Precomputed mean wind speed (km/h).
+     * @return The sample standard deviation of wind speed.
      */
-    static float Mad(const Vector<float>& values, float mean);
+    static double SDWind(const WeatherLog& log, int year, int month, double mean);
 
     /**
-     * @brief Computes the sample Pearson correlation coefficient.
-     * @param xValues First data series.
-     * @param yValues Second data series.
-     * @param result Output correlation result.
-     * @return True if the calculation succeeds, otherwise false.
+     * @brief Computes the mean temperature (degrees C) for a specified month and year.
+     *
+     * Only valid temperature readings are included.
+     * No unit conversion is performed.
+     *
+     * @param log   Reference to WeatherLog containing all records.
+     * @param year  The year to filter.
+     * @param month The month to filter (1~12).
+     * @return The mean temperature in degrees Celsius.
      */
-    static bool ComputeSPCC(const Vector<double>& xValues,
-                            const Vector<double>& yValues,
-                            double& result);
+    static double MeanTemp(const WeatherLog& log, int year, int month);
 
     /**
-     * @brief Builds a monthly summary object.
-     * @param year Year of the summary.
-     * @param month Month of the summary.
-     * @param meanSpeed Mean wind speed.
-     * @param speedStDev Wind speed standard deviation.
-     * @param speedMad Wind speed mean absolute deviation.
-     * @param meanTemp Mean temperature.
-     * @param tempStDev Temperature standard deviation.
-     * @param tempMad Temperature mean absolute deviation.
-     * @param solarTotal Total solar radiation.
-     * @param spccST SPCC for speed and temperature.
-     * @param spccSR SPCC for speed and solar radiation.
-     * @param spccTR SPCC for temperature and solar radiation.
-     * @param hasData True if the month has usable data.
-     * @return Filled MonthlySummary object.
+     * @brief Computes the sample standard deviation of temperature.
+     *
+     * Uses the sample standard deviation formula (n - 1).
+     * Only valid temperature readings are included.
+     *
+     * @param log   Reference to WeatherLog containing all records.
+     * @param year  The year to filter.
+     * @param month The month to filter (1~12).
+     * @param mean  Precomputed mean temperature.
+     * @return The sample standard deviation of temperature.
      */
-    static MonthlySummary BuildMonthlySummary(int year,
-                                              int month,
-                                              float meanSpeed,
-                                              float speedStDev,
-                                              float speedMad,
-                                              float meanTemp,
-                                              float tempStDev,
-                                              float tempMad,
-                                              double solarTotal,
-                                              double spccST,
-                                              double spccSR,
-                                              double spccTR,
-                                              bool hasData);
+    static double SDTemp(const WeatherLog& log, int year, int month, double mean);
+
+    /**
+     * @brief Computes the total solar radiation for a specified month and year.
+     *
+     * Only solar radiation values >= 100 W/m^2 are included.
+     * Each 10-minute reading is converted to kWh/m^2 using:
+     *      kWh/m^2 = SR / 6000
+     * and summed for the month.
+     *
+     * @param log   Reference to WeatherLog containing all records.
+     * @param year  The year to filter.
+     * @param month The month to filter (1~12).
+     * @return The total solar radiation in kWh/m^2.
+     */
+    static double SolarTotal(const WeatherLog& log, int year, int month);
+
+    /**
+     * @brief Checks whether any usable data exists for a given month and year.
+     *
+     * A month is considered to have data if:
+     * - It contains at least one valid wind reading, OR
+     * - It contains at least one valid temperature reading, OR
+     * - It contains at least one usable solar reading (>= 100 W/m^2).
+     *
+     * Used primarily for determining whether a month should be written
+     * in the CSV output for menu option 4.
+     *
+     * @param log   Reference to WeatherLog containing all records.
+     * @param year  The year to filter.
+     * @param month The month to filter (1~12).
+     * @return true if the month contains usable data; false otherwise.
+     */
+    static bool HasAnyDataForMonth(const WeatherLog& log, int year, int month);
 };
 
 #endif

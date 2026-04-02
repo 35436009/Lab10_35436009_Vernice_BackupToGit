@@ -65,7 +65,21 @@ bool DataLoader::IsBlankLine(const std::string& line) const
 // Checks if a record with the same date and time already exists.
 bool DataLoader::RecordExists(const WeatherLog& log, const Date& date, const Time& time) const
 {
-    return log.RecordExists(date, time);
+    for (int i = 0; i < log.GetSize(); i++)
+    {
+        const WeatherRec& rec = log.GetRecord(i);
+
+        if (rec.GetDate().GetDay() == date.GetDay() &&
+            rec.GetDate().GetMonth() == date.GetMonth() &&
+            rec.GetDate().GetYear() == date.GetYear() &&
+            rec.GetTime().GetHour() == time.GetHour() &&
+            rec.GetTime().GetMinute() == time.GetMinute())
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 // Opens data_source.txt and loads every CSV file listed.
@@ -123,6 +137,7 @@ bool DataLoader::ReadDataSources(const std::string& sourceFile, WeatherLog& log)
 // Opens one CSV file and loads all valid records into WeatherLog.
 bool DataLoader::LoadData(const std::string& fileName, WeatherLog& log)
 {
+
     std::string fullFileName = "data/" + fileName;
     std::ifstream inFile(fullFileName.c_str());
 

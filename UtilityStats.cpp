@@ -1,138 +1,200 @@
 #include "UtilityStats.h"
 #include <cmath>
 
-// Computes the mean of a vector of floating-point values.
-float UtilityStats::Mean(const Vector<float>& values)
+// Private helpers
+
+// Checks whether a record belongs to the given month and year.
+static bool MatchMonthYear(const WeatherRec& rec, int year, int month)
 {
-    if (values.GetSize() == 0)
-    {
-        return 0.0f;
-    }
-
-    float sum = 0.0f;
-
-    for (int i = 0; i < values.GetSize(); i++)
-    {
-        sum += values[i];
-    }
-
-    return sum / values.GetSize();
+    return rec.GetDate().GetYear() == year &&
+           rec.GetDate().GetMonth() == month;
 }
 
-// Computes the sample standard deviation of a vector of floating-point values.
-float UtilityStats::StDev(const Vector<float>& values, float mean)
+// Checks whether the month has any usable solar value.
+static bool HasUsableSolarForMonth(const WeatherLog& log, int year, int month)
 {
-    if (values.GetSize() <= 1)
+    for (int i = 0; i < log.GetSize(); i++)
     {
-        return 0.0f;
+        const WeatherRec& rec = log.GetRecord(i);
+
+        if (MatchMonthYear(rec, year, month) && rec.HasSolar())
+        {
+            if (rec.GetSolarRadiation() >= 100.0)
+            {
+                return true;
+            }
+        }
     }
 
-    float sumSquares = 0.0f;
-
-    for (int i = 0; i < values.GetSize(); i++)
-    {
-        float diff = values[i] - mean;
-        sumSquares += diff * diff;
-    }
-
-    return std::sqrt(sumSquares / (values.GetSize() - 1));
+    return false;
 }
 
-// Computes the mean absolute deviation of a vector of floating-point values.
-float UtilityStats::Mad(const Vector<float>& values, float mean)
+// Computes the mean wind speed in km/h.
+double UtilityStats::MeanWind(const WeatherLog& log, int year, int month)
 {
-    if (values.GetSize() == 0)
+    double sum = 0.0;
+    int count = 0;
+
+    for (int i = 0; i < log.GetSize(); i++)
     {
-        return 0.0f;
+        const WeatherRec& rec = log.GetRecord(i);
+
+        if (MatchMonthYear(rec, year, month) && rec.HasSpeed())
+        {
+            double speedKmh = rec.GetSpeed() * 3.6;
+            sum += speedKmh;
+            count++;
+        }
     }
 
-    float sumAbs = 0.0f;
-
-    for (int i = 0; i < values.GetSize(); i++)
+    if (count == 0)
     {
-        sumAbs += std::fabs(values[i] - mean);
-    }
-
-    return sumAbs / values.GetSize();
-}
-
-// Computes the sample Pearson correlation coefficient.
-bool UtilityStats::ComputeSPCC(const Vector<double>& xValues,
-                               const Vector<double>& yValues,
-                               double& result)
-{
-    if (xValues.GetSize() != yValues.GetSize())
-    {
-        return false;
-    }
-    else if (xValues.GetSize() <= 1)
-    {
-        return false;
-    }
-
-    double sumX = 0.0;
-    double sumY = 0.0;
-    double sumXY = 0.0;
-    double sumX2 = 0.0;
-    double sumY2 = 0.0;
-
-    for (int i = 0; i < xValues.GetSize(); i++)
-    {
-        double x = xValues[i];
-        double y = yValues[i];
-
-        sumX += x;
-        sumY += y;
-        sumXY += x * y;
-        sumX2 += x * x;
-        sumY2 += y * y;
-    }
-
-    double numerator = xValues.GetSize() * sumXY - sumX * sumY;
-    double denominator = std::sqrt((xValues.GetSize() * sumX2 - sumX * sumX) *
-                                    (xValues.GetSize() * sumY2 - sumY * sumY));
-
-    if (denominator == 0.0)
-    {
-        return false;
+        return 0.0;
     }
     else
     {
-        result = numerator / denominator;
-        return true;
+        return sum / count;
     }
 }
 
-// Builds a monthly summary object.
-MonthlySummary UtilityStats::BuildMonthlySummary(int year,
-                                                 int month,
-                                                 float meanSpeed,
-                                                 float speedStDev,
-                                                 float speedMad,
-                                                 float meanTemp,
-                                                 float tempStDev,
-                                                 float tempMad,
-                                                 double solarTotal,
-                                                 double spccST,
-                                                 double spccSR,
-                                                 double spccTR,
-                                                 bool hasData)
+// Computes the sample standard deviation of wind speed in km/h.
+double UtilityStats::SDWind(const WeatherLog& log, int year, int month, double mean)
 {
-    MonthlySummary summary;
+    double sumSquares = 0.0;
+    int count = 0;
 
-    summary.SetYear(year);
-    summary.SetMonth(month);
-    summary.SetMeanSpeed(meanSpeed);
-    summary.SetSpeedStDev(speedStDev);
-    summary.SetSpeedMad(speedMad);
-    summary.SetMeanTemp(meanTemp);
-    summary.SetTempStDev(tempStDev);
-    summary.SetTempMad(tempMad);
-    summary.SetSolarTotal(solarTotal);
-    summary.SetSPCCSpeedTemp(spccST);
-    summary.SetSPCCSpeedSolar(spccSR);
-    summary.SetSPCCTempSolar(spccTR);
-    summary.SetHasData(hasData);
+    for (int i = 0; i < log.GetSize(); i++)
+    {
+        const WeatherRec& rec = log.GetRecord(i);
 
-    return summary;
+        if (MatchMonthYear(rec, year, month) && rec.HasSpeed())
+        {
+            double speedKmh = rec.GetSpeed() * 3.6;
+            double diff = speedKmh - mean;
+            sumSquares += diff * diff;
+            count++;
+        }
+    }
+
+    if (count <= 1)
+    {
+        return 0.0;
+    }
+    else
+    {
+        return std::sqrt(sumSquares / (count - 1));
+    }
+}
+
+// Computes the mean temperature in degrees C.
+double UtilityStats::MeanTemp(const WeatherLog& log, int year, int month)
+{
+    double sum = 0.0;
+    int count = 0;
+
+    for (int i = 0; i < log.GetSize(); i++)
+    {
+        const WeatherRec& rec = log.GetRecord(i);
+
+        if (MatchMonthYear(rec, year, month) && rec.HasTemp())
+        {
+            sum += rec.GetTemperature();
+            count++;
+        }
+    }
+
+    if (count == 0)
+    {
+        return 0.0;
+    }
+    else
+    {
+        return sum / count;
+    }
+}
+
+// Computes the sample standard deviation of temperature.
+double UtilityStats::SDTemp(const WeatherLog& log, int year, int month, double mean)
+{
+    double sumSquares = 0.0;
+    int count = 0;
+
+    for (int i = 0; i < log.GetSize(); i++)
+    {
+        const WeatherRec& rec = log.GetRecord(i);
+
+        if (MatchMonthYear(rec, year, month) && rec.HasTemp())
+        {
+            double diff = rec.GetTemperature() - mean;
+            sumSquares += diff * diff;
+            count++;
+        }
+    }
+
+    if (count <= 1)
+    {
+        return 0.0;
+    }
+    else
+    {
+        return std::sqrt(sumSquares / (count - 1));
+    }
+}
+
+// Computes the monthly total solar radiation in kWh/m^2.
+double UtilityStats::SolarTotal(const WeatherLog& log, int year, int month)
+{
+    double total = 0.0;
+    bool foundUsable = false;
+
+    for (int i = 0; i < log.GetSize(); i++)
+    {
+        const WeatherRec& rec = log.GetRecord(i);
+
+        if (MatchMonthYear(rec, year, month) && rec.HasSolar())
+        {
+            double solar = rec.GetSolarRadiation();
+
+            if (solar >= 100.0)
+            {
+                total += (solar / 6000.0);
+                foundUsable = true;
+            }
+        }
+    }
+
+    if (foundUsable)
+    {
+        return total;
+    }
+    else
+    {
+        return 0.0;
+    }
+}
+
+// Checks whether the month has any usable wind, temperature, or solar data.
+bool UtilityStats::HasAnyDataForMonth(const WeatherLog& log, int year, int month)
+{
+    for (int i = 0; i < log.GetSize(); i++)
+    {
+        const WeatherRec& rec = log.GetRecord(i);
+
+        if (MatchMonthYear(rec, year, month))
+        {
+            if (rec.HasSpeed() || rec.HasTemp())
+            {
+                return true;
+            }
+        }
+    }
+
+    if (HasUsableSolarForMonth(log, year, month))
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }

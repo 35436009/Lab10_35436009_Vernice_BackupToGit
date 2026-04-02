@@ -16,7 +16,7 @@
  * - Store valid records into WeatherLog
  *
  * @author Vernice Foong
- * @version 03
+ * @version 05
  */
 class DataLoader
 {
@@ -26,7 +26,7 @@ public:
      *
      * @param sourceFile Name of the source text file.
      * @param log WeatherLog object to store all loaded records.
-     * @return True if at least one file is loaded; otherwise false.
+     * @return true if at least one file is loaded; otherwise false.
      */
     bool ReadDataSources(const std::string& sourceFile, WeatherLog& log);
 
@@ -36,7 +36,7 @@ private:
      *
      * @param fileName Name of the CSV file.
      * @param log WeatherLog object to store records.
-     * @return True if the file loads successfully; otherwise false.
+     * @return true if the file loads successfully; otherwise false.
      */
     bool LoadData(const std::string& fileName, WeatherLog& log);
 
@@ -44,17 +44,17 @@ private:
      * @brief Checks if a line is blank or contains only commas/spaces.
      *
      * @param line Input line from file.
-     * @return True if line is blank; otherwise false.
+     * @return true if line is blank; otherwise false.
      */
     bool IsBlankLine(const std::string& line) const;
 
     /**
-     * @brief Request WeatherLog to check if a record with the same date and time already exists.
+     * @brief Checks if a record with the same date and time already exists.
      *
      * @param log WeatherLog to search.
      * @param date Date of the record.
      * @param time Time of the record.
-     * @return True if duplicate exists; otherwise false.
+     * @return true if duplicate exists; otherwise false.
      */
     bool RecordExists(const WeatherLog& log, const Date& date, const Time& time) const;
 };

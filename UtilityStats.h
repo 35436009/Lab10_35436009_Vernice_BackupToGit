@@ -8,7 +8,6 @@
  * @brief Utility class for performing statistical calculations.
  *
  * This class contains only static methods.
- * It does not store data and performs no input/output.
  *
  * Responsibilities:
  * - Compute wind mean and sample SD
@@ -21,7 +20,7 @@
  *   using SR / 6000 and sum per month
  *
  * @author Vernice Foong
- * @version 02
+ * @version 03
  */
 class UtilityStats
 {
@@ -77,7 +76,7 @@ public:
      *
      * @param log   Reference to WeatherLog containing all records.
      * @param year  The year to filter.
-     * @param month The month to filter (1~12).
+     * @param month The month to filter (1 to 12).
      * @param mean  Precomputed mean temperature.
      * @return The sample standard deviation of temperature.
      */
@@ -93,7 +92,7 @@ public:
      *
      * @param log   Reference to WeatherLog containing all records.
      * @param year  The year to filter.
-     * @param month The month to filter (1~12).
+     * @param month The month to filter (1 to 12).
      * @return The total solar radiation in kWh/m^2.
      */
     static double SolarTotal(const WeatherLog& log, int year, int month);
@@ -102,16 +101,16 @@ public:
      * @brief Checks whether any usable data exists for a given month and year.
      *
      * A month is considered to have data if:
-     * - It contains at least one valid wind reading, OR
-     * - It contains at least one valid temperature reading, OR
-     * - It contains at least one usable solar reading (>= 100 W/m^2).
+     * It contains at least one valid wind reading, OR
+     * at least one valid temperature reading, OR
+     * at least one usable solar reading (>= 100 W/m^2).
      *
      * Used primarily for determining whether a month should be written
      * in the CSV output for menu option 4.
      *
      * @param log   Reference to WeatherLog containing all records.
      * @param year  The year to filter.
-     * @param month The month to filter (1~12).
+     * @param month The month to filter (1 to 12).
      * @return true if the month contains usable data; false otherwise.
      */
     static bool HasAnyDataForMonth(const WeatherLog& log, int year, int month);

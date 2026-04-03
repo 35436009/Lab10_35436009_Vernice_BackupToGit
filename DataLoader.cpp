@@ -3,6 +3,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <map>
 
 // Used to separate CSV fields.
 const char DELIMITER = ',';
@@ -15,7 +16,8 @@ struct ColumnIndexes
     int solarIndex;
     int tempIndex;
 };
-//My Helper Prototypes
+
+// My helper prototypes
 // Sets all column indexes to not found.
 static void InitialiseColumnIndexes(ColumnIndexes& indexes);
 
@@ -48,6 +50,9 @@ static void FillWeatherRecord(WeatherRec& rec,
                               const std::string& solarField,
                               const std::string& tempField);
 
+// Builds a unique key for duplicate detection.
+static std::string BuildRecordKey(const Date& date, const Time& time);
+
 // Checks if a line is blank or contains only commas/spaces.
 bool DataLoader::IsBlankLine(const std::string& line) const
 {
@@ -60,26 +65,6 @@ bool DataLoader::IsBlankLine(const std::string& line) const
     }
 
     return true;
-}
-
-// Checks if a record with the same date and time already exists.
-bool DataLoader::RecordExists(const WeatherLog& log, const Date& date, const Time& time) const
-{
-    for (int i = 0; i < log.GetSize(); i++)
-    {
-        const WeatherRec& rec = log.GetRecord(i);
-
-        if (rec.GetDate().GetDay() == date.GetDay() &&
-            rec.GetDate().GetMonth() == date.GetMonth() &&
-            rec.GetDate().GetYear() == date.GetYear() &&
-            rec.GetTime().GetHour() == time.GetHour() &&
-            rec.GetTime().GetMinute() == time.GetMinute())
-        {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 // Opens data_source.txt and loads every CSV file listed.
@@ -137,7 +122,6 @@ bool DataLoader::ReadDataSources(const std::string& sourceFile, WeatherLog& log)
 // Opens one CSV file and loads all valid records into WeatherLog.
 bool DataLoader::LoadData(const std::string& fileName, WeatherLog& log)
 {
-
     std::string fullFileName = "data/" + fileName;
     std::ifstream inFile(fullFileName.c_str());
 
@@ -163,6 +147,8 @@ bool DataLoader::LoadData(const std::string& fileName, WeatherLog& log)
         return false;
     }
 
+    std::map<std::string, bool> seenRecords;
+
     std::string line;
     int rowCount = 0;
 
@@ -186,12 +172,16 @@ bool DataLoader::LoadData(const std::string& fileName, WeatherLog& log)
 
             if (ParseWAST(wastField, date, time))
             {
-                if (RecordExists(log, date, time))
+                std::string recordKey = BuildRecordKey(date, time);
+
+                if (seenRecords.find(recordKey) != seenRecords.end())
                 {
                     // Duplicate row, skip it.
                 }
                 else
                 {
+                    seenRecords.insert(std::make_pair(recordKey, true));
+
                     WeatherRec rec(date, time);
                     FillWeatherRecord(rec, speedField, solarField, tempField);
                     log.AddRecord(rec);
@@ -423,4 +413,16 @@ static void FillWeatherRecord(WeatherRec& rec,
     SetOptionalSpeed(rec, speedField);
     SetOptionalSolar(rec, solarField);
     SetOptionalTemp(rec, tempField);
+}
+
+// Builds a unique key for duplicate detection.
+static std::string BuildRecordKey(const Date& date, const Time& time)
+{
+    std::stringstream keyStream;
+    keyStream << date.GetDay() << '/'
+              << date.GetMonth() << '/'
+              << date.GetYear() << ' '
+              << time.GetHour() << ':'
+              << time.GetMinute();
+    return keyStream.str();
 }

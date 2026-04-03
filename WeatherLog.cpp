@@ -2,69 +2,24 @@
 
 // Default constructor.
 WeatherLog::WeatherLog()
-    : m_totalRecords(0)
 {
-    // Map starts empty and trees are created on demand.
+    // Initialize the internal Vector container.
 }
 
 // Adds a WeatherRec into the log.
 void WeatherLog::AddRecord(const WeatherRec& rec)
 {
-    int year = rec.GetDate().GetYear();
-
-    if (m_yearTrees.find(year) == m_yearTrees.end())
-    {
-        m_yearTrees.insert(std::make_pair(year, BST<WeatherRec>()));
-    }
-
-    m_yearTrees[year].Insert(rec);
-    m_totalRecords++;
+    m_records.Add(rec);
 }
 
-// Returns number of stored records across all years.
+//Returns number of stored records.
 int WeatherLog::GetSize() const
 {
-    return m_totalRecords;
+    return m_records.GetSize();
 }
 
-// Checks whether a given year exists in the log.
-bool WeatherLog::HasYear(int year) const
+//Returns record at given index.
+const WeatherRec& WeatherLog::GetRecord(int index) const
 {
-    return m_yearTrees.find(year) != m_yearTrees.end();
-}
-
-// Checks whether a record with the same date and time exists.
-bool WeatherLog::RecordExists(const Date& date, const Time& time) const
-{
-    std::map<int, BST<WeatherRec> >::const_iterator it = m_yearTrees.find(date.GetYear());
-
-    if (it == m_yearTrees.end())
-    {
-        return false;
-    }
-
-    WeatherRec probe(date, time);
-    return it->second.Search(probe);
-}
-
-// Traverses all records for a given year in sorted order.
-void WeatherLog::TraverseYear(int year, void (*visit)(const WeatherRec&)) const
-{
-    std::map<int, BST<WeatherRec> >::const_iterator it = m_yearTrees.find(year);
-
-    if (it != m_yearTrees.end())
-    {
-        it->second.Inorder(visit);
-    }
-}
-
-// Traverses all records across all years in sorted order, for option 3 and 4.
-void WeatherLog::TraverseAllYears(void (*visit)(const WeatherRec&)) const
-{
-    std::map<int, BST<WeatherRec> >::const_iterator it;
-
-    for (it = m_yearTrees.begin(); it != m_yearTrees.end(); ++it)
-    {
-        it->second.Inorder(visit);
-    }
+    return m_records[index];
 }

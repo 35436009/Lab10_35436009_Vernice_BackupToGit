@@ -48,15 +48,6 @@ private:
      */
     bool IsBlankLine(const std::string& line) const;
 
-    /**
-     * @brief Checks if a record with the same date and time already exists.
-     *
-     * @param log WeatherLog to search.
-     * @param date Date of the record.
-     * @param time Time of the record.
-     * @return true if duplicate exists; otherwise false.
-     */
-    bool RecordExists(const WeatherLog& log, const Date& date, const Time& time) const;
 };
 
 #endif

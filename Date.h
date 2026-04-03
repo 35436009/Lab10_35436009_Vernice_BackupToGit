@@ -13,7 +13,7 @@ using std::istream;
  * Stores: Day, Month, Year
  *
  * @author Vernice Foong
- * @version 04
+ * @version 01
  */
 
 class Date
@@ -69,58 +69,23 @@ public:
      */
     void SetYear(int year);
 
-    /**
-     * @brief Checks whether the stored date is valid.
-     * @return True if valid, otherwise false.
-     */
-    bool IsValid() const;
+    bool operator<(const Date& other) const
+    {
+        if (m_year != other.m_year)
+            return m_year < other.m_year;
 
-    /**
-     * @brief Sets the full date at once.
-     * @param day Day of month.
-     * @param month Month.
-     * @param year Year.
-     * @return True if the date is valid and was set.
-     */
-    bool SetDate(int day, int month, int year);
+        if (m_month != other.m_month)
+            return m_month < other.m_month;
 
-    /**
-     * @brief Checks whether a year is a leap year.
-     * @param year Year to check.
-     * @return True if leap year, otherwise false.
-     */
-    static bool IsLeapYear(int year);
+        return m_day < other.m_day;
+    }
 
-    /**
-     * @brief Checks whether a date is valid.
-     * @param day Day of month.
-     * @param month Month.
-     * @param year Year.
-     * @return True if the date is valid, otherwise false.
-     */
-    static bool IsValidDate(int day, int month, int year);
-
-    /**
-     * @brief Equality operator.
-     * @param other Another date.
-     * @return True if both dates are equal.
-     */
-    bool operator==(const Date& other) const;
-
-    /**
-     * @brief Less-than operator.
-     * @param other Another date.
-     * @return True if this date is earlier than other.
-     */
-    bool operator<(const Date& other) const;
-
-    /**
-     * @brief Greater-than operator.
-     * @param other Another date.
-     * @return True if this date is later than other.
-     */
-    bool operator>(const Date& other) const;
-
+    bool operator==(const Date& other) const
+    {
+        return (m_year == other.m_year &&
+                m_month == other.m_month &&
+                m_day == other.m_day);
+    }
 private:
     int m_day;
     int m_month;

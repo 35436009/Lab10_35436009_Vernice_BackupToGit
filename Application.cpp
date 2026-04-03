@@ -2,130 +2,153 @@
 #include "UtilityStats.h"
 #include <iostream>
 #include <fstream>
+#include "BST.h"
 #include <cmath>
+#include <iomanip>
 
-// Helpers for collecting filtered values from traversal callbacks.
-// The BST callback interface uses a simple function pointer.
-static int g_targetYear = 0;
-static int g_targetMonth = 0;
-
-static Vector<float>* g_windValues = NULL;
-static Vector<float>* g_tempValues = NULL;
-
-static double g_sumST_x = 0.0;
-static double g_sumST_y = 0.0;
-static double g_sumST_xy = 0.0;
-static double g_sumST_x2 = 0.0;
-static double g_sumST_y2 = 0.0;
-
-static double g_sumSR_x = 0.0;
-static double g_sumSR_y = 0.0;
-static double g_sumSR_xy = 0.0;
-static double g_sumSR_x2 = 0.0;
-static double g_sumSR_y2 = 0.0;
-
-static double g_sumTR_x = 0.0;
-static double g_sumTR_y = 0.0;
-static double g_sumTR_xy = 0.0;
-static double g_sumTR_x2 = 0.0;
-static double g_sumTR_y2 = 0.0;
-
-static int g_nST = 0;
-static int g_nSR = 0;
-static int g_nTR = 0;
-
-// Collects wind values for option 1.
-static void CollectWindValues(const WeatherRec& rec)
+//Helper for MAD
+static double CalculateMAD_Map(const std::multimap<int, WeatherRec>& monthMap, int month, int type, double mean)
 {
-    if (rec.GetDate().GetMonth() == g_targetMonth &&
-        rec.HasSpeed() &&
-        g_windValues != NULL)
+    std::pair<std::multimap<int, WeatherRec>::const_iterator,
+              std::multimap<int, WeatherRec>::const_iterator> range = monthMap.equal_range(month);
+
+    double sum = 0.0;
+    int count = 0;
+
+    for (std::multimap<int, WeatherRec>::const_iterator it = range.first; it != range.second; it++)
     {
-        g_windValues->Add(static_cast<float>(rec.GetSpeed() * 3.6));
+        const WeatherRec& rec = it->second;
+        double value = 0.0;
+        bool valid = false;
+
+        if (type == 1 && rec.HasSpeed())
+        {
+            value = rec.GetSpeed();
+            valid = true;
+        }
+        else if (type == 2 && rec.HasTemp())
+        {
+            value = rec.GetTemperature();
+            valid = true;
+        }
+        else if (type == 3 && rec.HasSolar())
+        {
+            value = rec.GetSolarRadiation();
+            valid = true;
+        }
+
+        if (valid)
+        {
+            sum += std::abs(value - mean);
+            count++;
+        }
+    }
+
+    if (count > 0)
+    {
+        return sum / count;
+    }
+    else
+    {
+        return 0.0;
     }
 }
 
-// Collects temperature values for option 2.
-static void CollectTempValues(const WeatherRec& rec)
+//Helper for Mean
+static double CalculateMean(double sum, int count)
 {
-    if (rec.GetDate().GetMonth() >= 1 &&
-        rec.GetDate().GetMonth() <= 12 &&
-        rec.HasTemp() &&
-        g_tempValues != NULL)
+    if (count > 0)
     {
-        g_tempValues->Add(static_cast<float>(rec.GetTemperature()));
+        return sum / count;
+    }
+    else
+    {
+        return 0.0;
     }
 }
 
-// Collects wind, temperature, and solar data for option 3.
-static void CollectSPCCValues(const WeatherRec& rec)
+//Helper for SD
+static double CalculateSD(double sumSquares, int count)
 {
-    if (rec.GetDate().GetMonth() != g_targetMonth)
+    if (count > 0)
     {
-        return;
+        return std::sqrt(sumSquares / count);
     }
-
-    if (rec.HasSpeed() && rec.HasTemp())
+    else
     {
-        double x = rec.GetSpeed();
-        double y = rec.GetTemperature();
-        g_sumST_x += x;
-        g_sumST_y += y;
-        g_sumST_xy += x * y;
-        g_sumST_x2 += x * x;
-        g_sumST_y2 += y * y;
-        g_nST++;
-    }
-
-    if (rec.HasSpeed() && rec.HasSolar())
-    {
-        double x = rec.GetSpeed();
-        double y = rec.GetSolarRadiation();
-        g_sumSR_x += x;
-        g_sumSR_y += y;
-        g_sumSR_xy += x * y;
-        g_sumSR_x2 += x * x;
-        g_sumSR_y2 += y * y;
-        g_nSR++;
-    }
-
-    if (rec.HasTemp() && rec.HasSolar())
-    {
-        double x = rec.GetTemperature();
-        double y = rec.GetSolarRadiation();
-        g_sumTR_x += x;
-        g_sumTR_y += y;
-        g_sumTR_xy += x * y;
-        g_sumTR_x2 += x * x;
-        g_sumTR_y2 += y * y;
-        g_nTR++;
+        return 0.0;
     }
 }
 
-// Collects wind and temperature values for option 4.
-static void CollectWindTempValues(const WeatherRec& rec)
+//Helper for VarianceSum
+static double CalculateVarianceSum(const std::multimap<int, WeatherRec>& monthMap,
+                                   int month,
+                                   int type,
+                                   double mean)
 {
-    if (rec.GetDate().GetYear() != g_targetYear ||
-        rec.GetDate().GetMonth() != g_targetMonth)
+    std::pair<std::multimap<int, WeatherRec>::const_iterator,
+              std::multimap<int, WeatherRec>::const_iterator> range = monthMap.equal_range(month);
+
+    double sum = 0.0;
+
+    for (std::multimap<int, WeatherRec>::const_iterator it = range.first; it != range.second; it++)
     {
-        return;
+        const WeatherRec& rec = it->second;
+        double value = 0.0;
+        bool valid = false;
+
+        if (type == 1)
+        {
+            if (rec.HasSpeed())
+            {
+                value = rec.GetSpeed();
+                valid = true;
+            }
+        }
+        else if (type == 2)
+        {
+            if (rec.HasTemp())
+            {
+                value = rec.GetTemperature();
+                valid = true;
+            }
+        }
+        else if (type == 3)
+        {
+            if (rec.HasSolar())
+            {
+                value = rec.GetSolarRadiation();
+                valid = true;
+            }
+        }
+
+        if (valid)
+        {
+            sum += (value - mean) * (value - mean);
+        }
     }
 
-    if (rec.HasSpeed() && g_windValues != NULL)
-    {
-        g_windValues->Add(static_cast<float>(rec.GetSpeed() * 3.6));
-    }
-
-    if (rec.HasTemp() && g_tempValues != NULL)
-    {
-        g_tempValues->Add(static_cast<float>(rec.GetTemperature()));
-    }
+    return sum;
 }
 
 // Constructor for reference to WeatherLog.
 Application::Application(WeatherLog& log)
     : m_log(log)
 {
+    for (int i = 0; i < m_log.GetSize(); i++)
+    {
+        const WeatherRec& rec = m_log.GetRecord(i);
+
+        int year = rec.GetDate().GetYear();
+        int month = rec.GetDate().GetMonth();
+
+        m_dataMap[year].insert(std::make_pair(month, rec));
+
+        if (!m_tree.Search(year))
+        {
+            m_tree.Insert(year);
+        }
+    }
 }
 
 // Runs the main menu loop.
@@ -171,7 +194,6 @@ void Application::DisplayMenu() const
     std::cout << "3. sPCC calculation (month)\n";
     std::cout << "4. Generate WindTempSolar.csv\n";
     std::cout << "5. Exit\n";
-    std::cout << "Enter choice: ";
 }
 
 // Reads an integer from the user.
@@ -187,44 +209,18 @@ const char* Application::GetMonthName(int month) const
 {
     static const char* names[] =
     {
-        "January","February","March","April","May","June",
-        "July","August","September","October","November","December"
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
     };
 
     if (month >= 1 && month <= 12)
     {
         return names[month - 1];
     }
-
-    return "";
-}
-
-// Rounds a value to 2 decimal places.
-static double Round2(double value)
-{
-    return std::floor(value * 100.0 + 0.5) / 100.0;
-}
-
-// Computes sample Pearson correlation coefficient.
-static bool ComputeSPCC(int n, double sumX, double sumY, double sumXY,
-                        double sumX2, double sumY2, double& result)
-{
-    if (n < 2)
+    else
     {
-        return false;
+        return "";
     }
-
-    double numerator = n * sumXY - sumX * sumY;
-    double denominator = std::sqrt((n * sumX2 - sumX * sumX) *
-                                   (n * sumY2 - sumY * sumY));
-
-    if (denominator == 0.0)
-    {
-        return false;
-    }
-
-    result = numerator / denominator;
-    return true;
 }
 
 // Menu option 1 for wind stats.
@@ -239,31 +235,62 @@ void Application::DoOption1()
     if (month < 1 || month > 12)
     {
         std::cout << "Invalid month.\n";
-        return;
     }
-
-    Vector<float> windValues;
-    g_targetMonth = month;
-    g_windValues = &windValues;
-
-    m_log.TraverseYear(year, CollectWindValues);
-
-    g_windValues = NULL;
-
-    if (windValues.GetSize() == 0)
+    else
     {
-        std::cout << GetMonthName(month) << " " << year << ": No Data\n";
-        return;
+        std::map<int, std::multimap<int, WeatherRec> >::iterator itYear = m_dataMap.find(year);
+
+        if (itYear == m_dataMap.end())
+        {
+            std::cout << GetMonthName(month) << " " << year << ": No Data\n";
+        }
+        else
+        {
+            std::multimap<int, WeatherRec>& monthMap = itYear->second;
+            std::pair<std::multimap<int, WeatherRec>::iterator,
+                      std::multimap<int, WeatherRec>::iterator> range = monthMap.equal_range(month);
+
+            double sum = 0.0;
+            int count = 0;
+
+            for (std::multimap<int, WeatherRec>::iterator it = range.first; it != range.second; it++)
+            {
+                const WeatherRec& rec = it->second;
+
+                if (rec.GetDate().GetYear() == year && rec.HasSpeed())
+                {
+                    sum += rec.GetSpeed();
+                    count++;
+                }
+            }
+
+            if (count == 0)
+            {
+                std::cout << GetMonthName(month) << " " << year << ": No Data\n";
+            }
+            else
+            {
+                double mean = CalculateMean(sum, count);
+                double variance = 0.0;
+
+                for (std::multimap<int, WeatherRec>::iterator it = range.first; it != range.second; it++)
+                {
+                    const WeatherRec& rec = it->second;
+
+                    if (rec.GetDate().GetYear() == year && rec.HasSpeed())
+                    {
+                        variance += (rec.GetSpeed() - mean) * (rec.GetSpeed() - mean);
+                    }
+                }
+
+                double sd = CalculateSD(variance, count);
+
+                std::cout << GetMonthName(month) << " " << year << ":\n";
+                std::cout << "Average speed: " << mean << " km/h\n";
+                std::cout << "Sample stdev: " << sd << "\n";
+            }
+        }
     }
-
-    float mean = UtilityStats::Mean(windValues);
-    float sd = UtilityStats::StDev(windValues, mean);
-    float mad = UtilityStats::Mad(windValues, mean);
-
-    std::cout << GetMonthName(month) << " " << year << ":\n";
-    std::cout << "Average speed: " << Round2(mean) << " km/h\n";
-    std::cout << "Sample stdev: " << Round2(sd) << "\n";
-    std::cout << "Mean absolute deviation: " << Round2(mad) << "\n";
 }
 
 // Menu option 2 for temperature stats.
@@ -276,108 +303,137 @@ void Application::DoOption2()
 
     for (int month = 1; month <= 12; month++)
     {
-        Vector<float> tempValues;
-        g_targetMonth = month;
-        g_tempValues = &tempValues;
+        double mean = UtilityStats::MeanTemp(m_log, year, month);
 
-        m_log.TraverseYear(year, CollectTempValues);
-
-        g_tempValues = NULL;
-
-        if (tempValues.GetSize() == 0)
+        if (mean == 0.0)
         {
             std::cout << GetMonthName(month) << ": No Data\n";
         }
         else
         {
-            float mean = UtilityStats::Mean(tempValues);
-            float sd = UtilityStats::StDev(tempValues, mean);
+            double sd = UtilityStats::SDTemp(m_log, year, month, mean);
 
             std::cout << GetMonthName(month)
-                      << ": average: " << Round2(mean)
-                      << " degrees C, stdev: " << Round2(sd)
+                      << ": average: " << mean
+                      << " degrees C, stdev: " << sd
                       << "\n";
         }
     }
 }
 
-// Menu option 3: Sample Pearson Correlation Coefficient for a month.
+// Option 3
 void Application::DoOption3()
 {
+    int month;
+
     std::cout << "Enter month (1-12): ";
-    int month = ReadInt();
+    month = ReadInt();
 
     if (month < 1 || month > 12)
     {
-        std::cout << "Invalid month.\n";
-        return;
-    }
-
-    g_targetMonth = month;
-
-    g_sumST_x = 0.0;
-    g_sumST_y = 0.0;
-    g_sumST_xy = 0.0;
-    g_sumST_x2 = 0.0;
-    g_sumST_y2 = 0.0;
-
-    g_sumSR_x = 0.0;
-    g_sumSR_y = 0.0;
-    g_sumSR_xy = 0.0;
-    g_sumSR_x2 = 0.0;
-    g_sumSR_y2 = 0.0;
-
-    g_sumTR_x = 0.0;
-    g_sumTR_y = 0.0;
-    g_sumTR_xy = 0.0;
-    g_sumTR_x2 = 0.0;
-    g_sumTR_y2 = 0.0;
-
-    g_nST = 0;
-    g_nSR = 0;
-    g_nTR = 0;
-
-    m_log.TraverseAllYears(CollectSPCCValues);
-
-    double rST = 0.0;
-    double rSR = 0.0;
-    double rTR = 0.0;
-
-    bool okST = ComputeSPCC(g_nST, g_sumST_x, g_sumST_y, g_sumST_xy, g_sumST_x2, g_sumST_y2, rST);
-    bool okSR = ComputeSPCC(g_nSR, g_sumSR_x, g_sumSR_y, g_sumSR_xy, g_sumSR_x2, g_sumSR_y2, rSR);
-    bool okTR = ComputeSPCC(g_nTR, g_sumTR_x, g_sumTR_y, g_sumTR_xy, g_sumTR_x2, g_sumTR_y2, rTR);
-
-    std::cout << "Sample Pearson Correlation Coefficient for "
-              << GetMonthName(month) << "\n";
-
-    std::cout << "S_T: ";
-    if (okST)
-    {
-        std::cout << Round2(rST) << "\n";
+        std::cout << "Invalid month\n";
     }
     else
     {
-        std::cout << "No Data\n";
-    }
+        double sumS = 0.0;
+        double sumT = 0.0;
+        double sumR = 0.0;
+        double sumST = 0.0;
+        double sumSR = 0.0;
+        double sumTR = 0.0;
+        double sumS2 = 0.0;
+        double sumT2 = 0.0;
+        double sumR2 = 0.0;
+        int n = 0;
 
-    std::cout << "S_R: ";
-    if (okSR)
-    {
-        std::cout << Round2(rSR) << "\n";
-    }
-    else
-    {
-        std::cout << "No Data\n";
-    }
+        for (std::map<int, std::multimap<int, WeatherRec> >::iterator yearPair = m_dataMap.begin();
+             yearPair != m_dataMap.end();
+             yearPair++)
+        {
+            std::multimap<int, WeatherRec>& monthMap = yearPair->second;
+            std::pair<std::multimap<int, WeatherRec>::iterator,
+                      std::multimap<int, WeatherRec>::iterator> range = monthMap.equal_range(month);
 
-    std::cout << "T_R: ";
-    if (okTR)
-    {
-        std::cout << Round2(rTR) << "\n";
-    }
-    else
-    {
-        std::cout << "No Data\n";
+            for (std::multimap<int, WeatherRec>::iterator it = range.first; it != range.second; it++)
+            {
+                const WeatherRec& rec = it->second;
+
+                if (rec.HasSpeed() && rec.HasTemp() && rec.HasSolar())
+                {
+                    double S = rec.GetSpeed();
+                    double T = rec.GetTemperature();
+                    double R = rec.GetSolarRadiation();
+
+                    sumS += S;
+                    sumT += T;
+                    sumR += R;
+
+                    sumST += S * T;
+                    sumSR += S * R;
+                    sumTR += T * R;
+
+                    sumS2 += S * S;
+                    sumT2 += T * T;
+                    sumR2 += R * R;
+
+                    n++;
+                }
+            }
+        }
+
+        if (n < 2)
+        {
+            std::cout << "Not enough data\n";
+        }
+        else
+        {
+            double numerator;
+            double denominator;
+
+            numerator = n * sumST - sumS * sumT;
+            denominator = std::sqrt((n * sumS2 - sumS * sumS) * (n * sumT2 - sumT * sumT));
+            double ST;
+            if (denominator == 0.0)
+            {
+                ST = 0.0;
+            }
+            else
+            {
+                ST = numerator / denominator;
+            }
+
+            numerator = n * sumSR - sumS * sumR;
+            denominator = std::sqrt((n * sumS2 - sumS * sumS) * (n * sumR2 - sumR * sumR));
+            double SR;
+            if (denominator == 0.0)
+            {
+                SR = 0.0;
+            }
+            else
+            {
+                SR = numerator / denominator;
+            }
+
+            numerator = n * sumTR - sumT * sumR;
+            denominator = std::sqrt((n * sumT2 - sumT * sumT) * (n * sumR2 - sumR * sumR));
+            double TR;
+            if (denominator == 0.0)
+            {
+                TR = 0.0;
+            }
+            else
+            {
+                TR = numerator / denominator;
+            }
+
+            std::cout << std::fixed << std::setprecision(2);
+            std::cout << "\nSample Pearson Correlation Coefficient for "
+                      << GetMonthName(month) << "\n";
+
+            std::cout << "S_T: " << ST << "\n";
+            std::cout << "S_R: " << SR << "\n";
+            std::cout << "T_R: " << TR << "\n";
+        }
     }
 }
 
@@ -391,78 +447,102 @@ void Application::DoOption4()
     if (!out)
     {
         std::cout << "Error creating WindTempSolar.csv\n";
-        return;
     }
-
-    out << year << "\n";
-
-    bool yearHasData = false;
-
-    for (int month = 1; month <= 12; month++)
+    else
     {
-        Vector<float> windValues;
-        Vector<float> tempValues;
+        out << year << "\n";
 
-        g_targetYear = year;
-        g_targetMonth = month;
-        g_windValues = &windValues;
-        g_tempValues = &tempValues;
+        bool yearHasData = false;
 
-        m_log.TraverseYear(year, CollectWindTempValues);
-
-        g_windValues = NULL;
-        g_tempValues = NULL;
-
-        double totalSolar = UtilityStats::SolarTotal(m_log, year, month);
-
-        bool hasWind = (windValues.GetSize() > 0);
-        bool hasTemp = (tempValues.GetSize() > 0);
-        bool hasSolar = (totalSolar > 0.0);
-
-        if (!hasWind && !hasTemp && !hasSolar)
+        for (int month = 1; month <= 12; month++)
         {
-            continue;
+            if (UtilityStats::HasAnyDataForMonth(m_log, year, month))
+            {
+                yearHasData = true;
+
+                std::map<int, std::multimap<int, WeatherRec> >::iterator itYear = m_dataMap.find(year);
+
+                if (itYear != m_dataMap.end())
+                {
+                    std::multimap<int, WeatherRec>& monthMap = itYear->second;
+                    std::pair<std::multimap<int, WeatherRec>::iterator,
+                              std::multimap<int, WeatherRec>::iterator> range = monthMap.equal_range(month);
+
+                    double sumWind = 0.0;
+                    int countWind = 0;
+                    double sumTemp = 0.0;
+                    int countTemp = 0;
+                    double sumSolar = 0.0;
+
+                    for (std::multimap<int, WeatherRec>::iterator it = range.first; it != range.second; it++)
+                    {
+                        const WeatherRec& rec = it->second;
+
+                        if (rec.HasSpeed())
+                        {
+                            sumWind += rec.GetSpeed();
+                            countWind++;
+                        }
+
+                        if (rec.HasTemp())
+                        {
+                            sumTemp += rec.GetTemperature();
+                            countTemp++;
+                        }
+
+                        if (rec.HasSolar())
+                        {
+                            sumSolar += rec.GetSolarRadiation();
+                        }
+                    }
+
+                    double meanWind = CalculateMean(sumWind, countWind);
+                    double meanTemp = CalculateMean(sumTemp, countTemp);
+                    double totalSolar = sumSolar;
+
+                    out << GetMonthName(month) << ",";
+
+                    if (meanWind != 0.0)
+                    {
+                        double varianceWind = CalculateVarianceSum(monthMap, month, 1, meanWind);
+                        double sdWind = CalculateSD(varianceWind, countWind);
+                        double madWind = CalculateMAD_Map(monthMap, month, 1, meanWind);
+                        out << meanWind << "(" << sdWind << "," << madWind << ")";
+                    }
+
+                    out << ",";
+
+                    if (meanTemp != 0.0)
+                    {
+                        double varianceTemp = CalculateVarianceSum(monthMap, month, 2, meanTemp);
+                        double sdTemp = CalculateSD(varianceTemp, countTemp);
+                        double madTemp = CalculateMAD_Map(monthMap, month, 2, meanTemp);
+                        out << meanTemp << "(" << sdTemp << "," << madTemp << ")";
+                    }
+
+                    out << ",";
+
+                    if (totalSolar != 0.0)
+                    {
+                        double madSolar = CalculateMAD_Map(monthMap, month, 3, totalSolar);
+                        out << totalSolar << "(0," << madSolar << ")";
+                    }
+
+                    out << "\n";
+                }
+            }
         }
 
-        yearHasData = true;
-
-        out << GetMonthName(month) << ",";
-
-        if (hasWind)
+        if (!yearHasData)
         {
-            float mean = UtilityStats::Mean(windValues);
-            float sd = UtilityStats::StDev(windValues, mean);
-            float mad = UtilityStats::Mad(windValues, mean);
-
-            out << Round2(mean) << "(" << Round2(sd) << ", " << Round2(mad) << ")";
+            out << "No Data\n";
         }
 
-        out << ",";
-
-        if (hasTemp)
-        {
-            float mean = UtilityStats::Mean(tempValues);
-            float sd = UtilityStats::StDev(tempValues, mean);
-            float mad = UtilityStats::Mad(tempValues, mean);
-
-            out << Round2(mean) << "(" << Round2(sd) << ", " << Round2(mad) << ")";
-        }
-
-        out << ",";
-
-        if (hasSolar)
-        {
-            out << Round2(totalSolar);
-        }
-
-        out << "\n";
+        out.close();
+        std::cout << "WindTempSolar.csv generated successfully.\n";
     }
-
-    if (!yearHasData)
-    {
-        out << "No Data\n";
-    }
-
-    out.close();
-    std::cout << "WindTempSolar.csv generated successfully.\n";
 }
+
+
+
+

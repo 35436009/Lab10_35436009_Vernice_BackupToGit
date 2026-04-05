@@ -17,14 +17,10 @@ struct ColumnIndexes
     int tempIndex;
 };
 
-// My helper prototypes
-// Sets all column indexes to not found.
+// Helper Prototypes
 static void InitialiseColumnIndexes(ColumnIndexes& indexes);
-
-// Reads the header row and finds the needed column positions.
 static bool GetColumnIndexes(const std::string& headerLine, ColumnIndexes& indexes);
 
-// Reads one row and extracts only the required fields.
 static void ExtractRowFields(const std::string& line,
                              const ColumnIndexes& indexes,
                              std::string& wastField,
@@ -32,28 +28,20 @@ static void ExtractRowFields(const std::string& line,
                              std::string& solarField,
                              std::string& tempField);
 
-// Parses the WAST field into Date and Time objects.
 static bool ParseWAST(const std::string& wastField, Date& date, Time& time);
 
-// Stores one optional speed value into the record.
 static void SetOptionalSpeed(WeatherRec& rec, const std::string& speedField);
-
-// Stores one optional solar value into the record.
 static void SetOptionalSolar(WeatherRec& rec, const std::string& solarField);
-
-// Stores one optional temperature value into the record.
 static void SetOptionalTemp(WeatherRec& rec, const std::string& tempField);
 
-// Fills the record with optional numeric values.
 static void FillWeatherRecord(WeatherRec& rec,
-                              const std::string& speedField,
-                              const std::string& solarField,
-                              const std::string& tempField);
+                             const std::string& speedField,
+                             const std::string& solarField,
+                             const std::string& tempField);
 
-// Builds a unique key for duplicate detection.
 static std::string BuildRecordKey(const Date& date, const Time& time);
 
-// Checks if a line is blank or contains only commas/spaces.
+// Blank Line Check
 bool DataLoader::IsBlankLine(const std::string& line) const
 {
     for (int i = 0; i < (int)line.length(); i++)
@@ -63,12 +51,12 @@ bool DataLoader::IsBlankLine(const std::string& line) const
             return false;
         }
     }
-
     return true;
 }
 
-// Opens data_source.txt and loads every CSV file listed.
-bool DataLoader::ReadDataSources(const std::string& sourceFile, WeatherLog& log)
+// Read data_source.txt
+bool DataLoader::ReadDataSources(const std::string& sourceFile,
+    std::map<int, std::map<int, BST<WeatherRec> > > & dataMap)
 {
     std::ifstream inFile(sourceFile.c_str());
 
@@ -77,10 +65,8 @@ bool DataLoader::ReadDataSources(const std::string& sourceFile, WeatherLog& log)
         std::cout << "Error opening data_source.txt\n";
         return false;
     }
-    else
-    {
-        std::cout << "Opened data_source.txt" << std::endl;
-    }
+
+    std::cout << "Opened data_source.txt\n";
 
     std::string fileName;
     bool loadedAtLeastOneFile = false;
@@ -89,61 +75,53 @@ bool DataLoader::ReadDataSources(const std::string& sourceFile, WeatherLog& log)
     {
         if (IsBlankLine(fileName))
         {
-            // Blank line in source file, do nothing.
+            continue;
         }
-        else
-        {
-            if (LoadData(fileName, log))
-            {
-                loadedAtLeastOneFile = true;
-            }
-            else
-            {
-                std::cout << "Error opening CSV file: " << fileName << "\n";
-                inFile.close();
-                return false;
-            }
-        }
+
+        // call
+        if (LoadData(fileName, dataMap))
+{
+    loadedAtLeastOneFile = true;
+}
+else
+{
+    std::cout << "Skipping bad file: " << fileName << "\n";
+    // DO NOT stop program
+}
     }
 
     inFile.close();
 
-    if (loadedAtLeastOneFile)
-    {
-        return true;
-    }
-    else
-    {
-        std::cout << "No CSV files in data_source.txt\n";
-        return false;
-    }
+ return loadedAtLeastOneFile;
 }
 
-// Opens one CSV file and loads all valid records into WeatherLog.
-bool DataLoader::LoadData(const std::string& fileName, WeatherLog& log)
+// Load single CSV
+bool DataLoader::LoadData(const std::string& fileName,
+    std::map<int, std::map<int, BST<WeatherRec> > >& dataMap)
 {
     std::string fullFileName = "data/" + fileName;
+
+    std::cout << "Opening: " << fullFileName << std::endl;
+
     std::ifstream inFile(fullFileName.c_str());
 
     if (!inFile.is_open())
     {
-        std::cout << "Error opening data file: " << fileName << std::endl;
-        return false;
+        std::cout << "Error opening data file: " << fullFileName << std::endl;
+
     }
 
     std::string headerLine;
     if (!std::getline(inFile, headerLine))
     {
         std::cout << "CSV file is empty: " << fileName << std::endl;
-        inFile.close();
         return false;
     }
 
     ColumnIndexes indexes;
     if (!GetColumnIndexes(headerLine, indexes))
     {
-        std::cout << "Required column WAST not found in file: " << fileName << std::endl;
-        inFile.close();
+        std::cout << "WAST column not found in file: " << fileName << std::endl;
         return false;
     }
 
@@ -155,58 +133,46 @@ bool DataLoader::LoadData(const std::string& fileName, WeatherLog& log)
     while (std::getline(inFile, line))
     {
         if (IsBlankLine(line))
+            continue;
+
+        std::string wastField, speedField, solarField, tempField;
+
+        ExtractRowFields(line, indexes, wastField, speedField, solarField, tempField);
+
+        Date date(0, 0, 0);
+        Time time(0, 0);
+
+        if (ParseWAST(wastField, date, time))
         {
-            // Blank data row, skip.
-        }
-        else
-        {
-            std::string wastField;
-            std::string speedField;
-            std::string solarField;
-            std::string tempField;
+            std::string key = BuildRecordKey(date, time);
 
-            ExtractRowFields(line, indexes, wastField, speedField, solarField, tempField);
+            if (seenRecords.find(key) != seenRecords.end())
+                continue;
 
-            Date date(0, 0, 0);
-            Time time(0, 0);
+            seenRecords[key] = true;
 
-            if (ParseWAST(wastField, date, time))
+            WeatherRec rec(date, time);
+            FillWeatherRecord(rec, speedField, solarField, tempField);
+
+            int year = rec.GetDate().GetYear();
+            int month = rec.GetDate().GetMonth();
+
+            dataMap[year][month].Insert(rec);
+
+            rowCount++;
+
+            if (rowCount % 5000 == 0)
             {
-                std::string recordKey = BuildRecordKey(date, time);
-
-                if (seenRecords.find(recordKey) != seenRecords.end())
-                {
-                    // Duplicate row, skip it.
-                }
-                else
-                {
-                    seenRecords.insert(std::make_pair(recordKey, true));
-
-                    WeatherRec rec(date, time);
-                    FillWeatherRecord(rec, speedField, solarField, tempField);
-                    log.AddRecord(rec);
-
-                    rowCount++;
-
-                    if (rowCount % 5000 == 0)
-                    {
-                        std::cout << "Processed " << rowCount
-                                  << " rows from " << fileName << std::endl;
-                    }
-                }
-            }
-            else
-            {
-                // Invalid WAST field, skip.
+                std::cout << "Processed " << rowCount
+                          << " rows from " << fileName << std::endl;
             }
         }
     }
 
-    inFile.close();
     return true;
 }
 
-// Sets all column indexes to not found.
+// Column Helpers
 static void InitialiseColumnIndexes(ColumnIndexes& indexes)
 {
     indexes.wastIndex = -1;
@@ -215,48 +181,28 @@ static void InitialiseColumnIndexes(ColumnIndexes& indexes)
     indexes.tempIndex = -1;
 }
 
-// Reads the header row and finds the needed column positions.
 static bool GetColumnIndexes(const std::string& headerLine, ColumnIndexes& indexes)
 {
     InitialiseColumnIndexes(indexes);
 
-    std::stringstream headerStream(headerLine);
+    std::stringstream ss(headerLine);
     std::string field;
     int col = 0;
 
-    while (std::getline(headerStream, field, DELIMITER))
+    while (std::getline(ss, field, DELIMITER))
     {
-        if (field == "WAST")
-        {
-            indexes.wastIndex = col;
-        }
-        else if (field == "S" || field == "Speed")
-        {
-            indexes.speedIndex = col;
-        }
-        else if (field == "SR" || field == "Solar")
-        {
-            indexes.solarIndex = col;
-        }
-        else if (field == "T" || field == "Temp")
-        {
-            indexes.tempIndex = col;
-        }
+        if (field == "WAST") indexes.wastIndex = col;
+        else if (field == "S" || field == "Speed") indexes.speedIndex = col;
+        else if (field == "SR" || field == "Solar") indexes.solarIndex = col;
+        else if (field == "T" || field == "Temp") indexes.tempIndex = col;
 
         col++;
     }
 
-    if (indexes.wastIndex == -1)
-    {
-        return false;
-    }
-    else
-    {
-        return true;
-    }
+    return indexes.wastIndex != -1;
 }
 
-// Reads one row and extracts only the required fields.
+// Row Extraction
 static void ExtractRowFields(const std::string& line,
                              const ColumnIndexes& indexes,
                              std::string& wastField,
@@ -264,94 +210,34 @@ static void ExtractRowFields(const std::string& line,
                              std::string& solarField,
                              std::string& tempField)
 {
-    wastField = "";
-    speedField = "";
-    solarField = "";
-    tempField = "";
+    std::stringstream ss(line);
+    std::string field;
+    int i = 0;
 
-    std::stringstream rowStream(line);
-    std::string currentField;
-    int currentIndex = 0;
-
-    while (std::getline(rowStream, currentField, DELIMITER))
+    while (std::getline(ss, field, DELIMITER))
     {
-        if (currentIndex == indexes.wastIndex)
-        {
-            wastField = currentField;
-        }
-        else if (currentIndex == indexes.speedIndex)
-        {
-            speedField = currentField;
-        }
-        else if (currentIndex == indexes.solarIndex)
-        {
-            solarField = currentField;
-        }
-        else if (currentIndex == indexes.tempIndex)
-        {
-            tempField = currentField;
-        }
-
-        currentIndex++;
+        if (i == indexes.wastIndex) wastField = field;
+        if (i == indexes.speedIndex) speedField = field;
+        if (i == indexes.solarIndex) solarField = field;
+        if (i == indexes.tempIndex) tempField = field;
+        i++;
     }
 }
 
-// Parses the WAST field into Date and Time objects.
+// Parse DateTime
 static bool ParseWAST(const std::string& wastField, Date& date, Time& time)
 {
-    if (wastField == "" || wastField == "NA")
-    {
-        return false;
-    }
+    if (wastField.empty() || wastField == "NA") return false;
 
-    std::stringstream wastStream(wastField);
-    std::string datePart;
-    std::string timePart;
+    std::stringstream ss(wastField);
+    std::string d, t;
+    ss >> d >> t;
 
-    wastStream >> datePart >> timePart;
+    int day, month, year, hour, minute;
 
-    if (datePart == "" || timePart == "")
-    {
-        return false;
-    }
-
-    std::stringstream dateStream(datePart);
-    std::string dayText;
-    std::string monthText;
-    std::string yearText;
-
-    std::getline(dateStream, dayText, '/');
-    std::getline(dateStream, monthText, '/');
-    std::getline(dateStream, yearText, '/');
-
-    if (dayText == "" || monthText == "" || yearText == "")
-    {
-        return false;
-    }
-
-    std::stringstream timeStream(timePart);
-    std::string hourText;
-    std::string minuteText;
-
-    std::getline(timeStream, hourText, ':');
-    std::getline(timeStream, minuteText, ':');
-
-    if (hourText == "" || minuteText == "")
-    {
-        return false;
-    }
-
-    int day = 0;
-    int month = 0;
-    int year = 0;
-    int hour = 0;
-    int minute = 0;
-
-    std::stringstream(dayText) >> day;
-    std::stringstream(monthText) >> month;
-    std::stringstream(yearText) >> year;
-    std::stringstream(hourText) >> hour;
-    std::stringstream(minuteText) >> minute;
+    char slash, colon;
+    std::stringstream(d) >> day >> slash >> month >> slash >> year;
+    std::stringstream(t) >> hour >> colon >> minute;
 
     date = Date(day, month, year);
     time = Time(hour, minute);
@@ -359,70 +245,40 @@ static bool ParseWAST(const std::string& wastField, Date& date, Time& time)
     return true;
 }
 
-// Stores one optional speed value into the record.
-static void SetOptionalSpeed(WeatherRec& rec, const std::string& speedField)
+// Optional setters
+static void SetOptionalSpeed(WeatherRec& rec, const std::string& f)
 {
-    if (speedField == "" || speedField == "NA")
-    {
-        rec.SetSpeed(0.0, false);
-    }
-    else
-    {
-        double speed = 0.0;
-        std::stringstream(speedField) >> speed;
-        rec.SetSpeed(speed, true);
-    }
+    if (f.empty() || f == "NA") rec.SetSpeed(0, false);
+    else { double v; std::stringstream(f) >> v; rec.SetSpeed(v, true); }
 }
 
-// Stores one optional solar value into the record.
-static void SetOptionalSolar(WeatherRec& rec, const std::string& solarField)
+static void SetOptionalSolar(WeatherRec& rec, const std::string& f)
 {
-    if (solarField == "" || solarField == "NA")
-    {
-        rec.SetSolarRadiation(0.0, false);
-    }
-    else
-    {
-        double solar = 0.0;
-        std::stringstream(solarField) >> solar;
-        rec.SetSolarRadiation(solar, true);
-    }
+    if (f.empty() || f == "NA") rec.SetSolarRadiation(0, false);
+    else { double v; std::stringstream(f) >> v; rec.SetSolarRadiation(v, true); }
 }
 
-// Stores one optional temperature value into the record.
-static void SetOptionalTemp(WeatherRec& rec, const std::string& tempField)
+static void SetOptionalTemp(WeatherRec& rec, const std::string& f)
 {
-    if (tempField == "" || tempField == "NA")
-    {
-        rec.SetTemperature(0.0, false);
-    }
-    else
-    {
-        double temp = 0.0;
-        std::stringstream(tempField) >> temp;
-        rec.SetTemperature(temp, true);
-    }
+    if (f.empty() || f == "NA") rec.SetTemperature(0, false);
+    else { double v; std::stringstream(f) >> v; rec.SetTemperature(v, true); }
 }
 
-// Fills the record with optional numeric values.
 static void FillWeatherRecord(WeatherRec& rec,
-                              const std::string& speedField,
-                              const std::string& solarField,
-                              const std::string& tempField)
+                             const std::string& s,
+                             const std::string& sr,
+                             const std::string& t)
 {
-    SetOptionalSpeed(rec, speedField);
-    SetOptionalSolar(rec, solarField);
-    SetOptionalTemp(rec, tempField);
+    SetOptionalSpeed(rec, s);
+    SetOptionalSolar(rec, sr);
+    SetOptionalTemp(rec, t);
 }
 
-// Builds a unique key for duplicate detection.
-static std::string BuildRecordKey(const Date& date, const Time& time)
+// Key builder
+static std::string BuildRecordKey(const Date& d, const Time& t)
 {
-    std::stringstream keyStream;
-    keyStream << date.GetDay() << '/'
-              << date.GetMonth() << '/'
-              << date.GetYear() << ' '
-              << time.GetHour() << ':'
-              << time.GetMinute();
-    return keyStream.str();
+    std::stringstream ss;
+    ss << d.GetDay() << "/" << d.GetMonth() << "/" << d.GetYear()
+       << " " << t.GetHour() << ":" << t.GetMinute();
+    return ss.str();
 }

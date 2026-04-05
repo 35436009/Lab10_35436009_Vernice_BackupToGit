@@ -10,7 +10,7 @@
  * Stores:Date, Time, Wind Speed (m/s), SR, T, and optional sensor values.
  *
  * @author Vernice Foong
- * @version 01
+ * @version 02
  */
 
 class WeatherRec
@@ -114,25 +114,28 @@ bool operator<(const WeatherRec& other) const
     if (m_date.GetMonth() != other.m_date.GetMonth())
         return m_date.GetMonth() < other.m_date.GetMonth();
 
-    return m_date.GetDay() < other.m_date.GetDay();
+    if (m_date.GetDay() != other.m_date.GetDay())
+        return m_date.GetDay() < other.m_date.GetDay();
+
+    // Get Hour
+    if (m_time.GetHour() != other.m_time.GetHour())
+        return m_time.GetHour() < other.m_time.GetHour();
+
+    return m_time.GetMinute() < other.m_time.GetMinute();
 }
 
 bool operator==(const WeatherRec& other) const
 {
     return m_date.GetYear() == other.m_date.GetYear() &&
            m_date.GetMonth() == other.m_date.GetMonth() &&
-           m_date.GetDay() == other.m_date.GetDay();
+           m_date.GetDay() == other.m_date.GetDay() &&
+           m_time.GetHour() == other.m_time.GetHour() &&
+           m_time.GetMinute() == other.m_time.GetMinute();
 }
 
 bool operator>(const WeatherRec& other) const
 {
-    if (m_date.GetYear() != other.m_date.GetYear())
-        return m_date.GetYear() > other.m_date.GetYear();
-
-    if (m_date.GetMonth() != other.m_date.GetMonth())
-        return m_date.GetMonth() > other.m_date.GetMonth();
-
-    return m_date.GetDay() > other.m_date.GetDay();
+    return other < *this;
 }
 
 private:
@@ -148,7 +151,7 @@ private:
     bool m_hasTemp;
 };
 
-// Stream output so WeatherRec can be printed in TestVector
+// Stream output so WeatherRec can be printed
 std::ostream& operator<<(std::ostream& os, const WeatherRec& rec);
 
 #endif

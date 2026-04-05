@@ -1,200 +1,199 @@
 #include "UtilityStats.h"
 #include <cmath>
 
-// Private helpers
+// Helpers
+static bool g_found = false;
+// Wind
+static double g_sum = 0;
+static int g_count = 0;
+static double g_varSum = 0;
+static double g_mean = 0;
 
-// Checks whether a record belongs to the given month and year.
-static bool MatchMonthYear(const WeatherRec& rec, int year, int month)
+void VisitCheck(const WeatherRec& rec)
 {
-    return rec.GetDate().GetYear() == year &&
-           rec.GetDate().GetMonth() == month;
-}
-
-// Checks whether the month has any usable solar value.
-static bool HasUsableSolarForMonth(const WeatherLog& log, int year, int month)
-{
-    for (int i = 0; i < log.GetSize(); i++)
+    if (rec.HasSpeed() || rec.HasTemp() ||
+        (rec.HasSolar() && rec.GetSolarRadiation() >= 100.0))
     {
-        const WeatherRec& rec = log.GetRecord(i);
-
-        if (MatchMonthYear(rec, year, month) && rec.HasSolar())
-        {
-            if (rec.GetSolarRadiation() >= 100.0)
-            {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
-// Computes the mean wind speed in km/h.
-double UtilityStats::MeanWind(const WeatherLog& log, int year, int month)
-{
-    double sum = 0.0;
-    int count = 0;
-
-    for (int i = 0; i < log.GetSize(); i++)
-    {
-        const WeatherRec& rec = log.GetRecord(i);
-
-        if (MatchMonthYear(rec, year, month) && rec.HasSpeed())
-        {
-            double speedKmh = rec.GetSpeed() * 3.6;
-            sum += speedKmh;
-            count++;
-        }
-    }
-
-    if (count == 0)
-    {
-        return 0.0;
-    }
-    else
-    {
-        return sum / count;
+        g_found = true;
     }
 }
 
-// Computes the sample standard deviation of wind speed in km/h.
-double UtilityStats::SDWind(const WeatherLog& log, int year, int month, double mean)
+void VisitWind(const WeatherRec& rec)
 {
-    double sumSquares = 0.0;
-    int count = 0;
-
-    for (int i = 0; i < log.GetSize(); i++)
+    if (rec.HasSpeed())
     {
-        const WeatherRec& rec = log.GetRecord(i);
-
-        if (MatchMonthYear(rec, year, month) && rec.HasSpeed())
-        {
-            double speedKmh = rec.GetSpeed() * 3.6;
-            double diff = speedKmh - mean;
-            sumSquares += diff * diff;
-            count++;
-        }
-    }
-
-    if (count <= 1)
-    {
-        return 0.0;
-    }
-    else
-    {
-        return std::sqrt(sumSquares / (count - 1));
+        g_sum += rec.GetSpeed() * 3.6; // convert m/s to km/h
+        g_count++;
     }
 }
 
-// Computes the mean temperature in degrees C.
-double UtilityStats::MeanTemp(const WeatherLog& log, int year, int month)
+void VisitWindVar(const WeatherRec& rec)
 {
-    double sum = 0.0;
-    int count = 0;
-
-    for (int i = 0; i < log.GetSize(); i++)
+    if (rec.HasSpeed())
     {
-        const WeatherRec& rec = log.GetRecord(i);
-
-        if (MatchMonthYear(rec, year, month) && rec.HasTemp())
-        {
-            sum += rec.GetTemperature();
-            count++;
-        }
-    }
-
-    if (count == 0)
-    {
-        return 0.0;
-    }
-    else
-    {
-        return sum / count;
+        double val = rec.GetSpeed() * 3.6;
+        double diff = val - g_mean;
+        g_varSum += diff * diff;
     }
 }
 
-// Computes the sample standard deviation of temperature.
-double UtilityStats::SDTemp(const WeatherLog& log, int year, int month, double mean)
+// Temperature
+void VisitTemp(const WeatherRec& rec)
 {
-    double sumSquares = 0.0;
-    int count = 0;
-
-    for (int i = 0; i < log.GetSize(); i++)
+    if (rec.HasTemp())
     {
-        const WeatherRec& rec = log.GetRecord(i);
-
-        if (MatchMonthYear(rec, year, month) && rec.HasTemp())
-        {
-            double diff = rec.GetTemperature() - mean;
-            sumSquares += diff * diff;
-            count++;
-        }
-    }
-
-    if (count <= 1)
-    {
-        return 0.0;
-    }
-    else
-    {
-        return std::sqrt(sumSquares / (count - 1));
+        g_sum += rec.GetTemperature();
+        g_count++;
     }
 }
 
-// Computes the monthly total solar radiation in kWh/m^2.
-double UtilityStats::SolarTotal(const WeatherLog& log, int year, int month)
+void VisitTempVar(const WeatherRec& rec)
 {
-    double total = 0.0;
-    bool foundUsable = false;
-
-    for (int i = 0; i < log.GetSize(); i++)
+    if (rec.HasTemp())
     {
-        const WeatherRec& rec = log.GetRecord(i);
-
-        if (MatchMonthYear(rec, year, month) && rec.HasSolar())
-        {
-            double solar = rec.GetSolarRadiation();
-
-            if (solar >= 100.0)
-            {
-                total += (solar / 6000.0);
-                foundUsable = true;
-            }
-        }
-    }
-
-    if (foundUsable)
-    {
-        return total;
-    }
-    else
-    {
-        return 0.0;
+        double diff = rec.GetTemperature() - g_mean;
+        g_varSum += diff * diff;
     }
 }
 
-// Checks whether the month has any usable wind, temperature, or solar data.
-bool UtilityStats::HasAnyDataForMonth(const WeatherLog& log, int year, int month)
+// Solar
+static double g_solar = 0;
+
+void VisitSolar(const WeatherRec& rec)
 {
-    for (int i = 0; i < log.GetSize(); i++)
+    if (rec.HasSolar() && rec.GetSolarRadiation() >= 100.0)
     {
-        const WeatherRec& rec = log.GetRecord(i);
-
-        if (MatchMonthYear(rec, year, month))
-        {
-            if (rec.HasSpeed() || rec.HasTemp())
-            {
-                return true;
-            }
-        }
-    }
-
-    if (HasUsableSolarForMonth(log, year, month))
-    {
-        return true;
-    }
-    else
-    {
-        return false;
+        g_solar += rec.GetSolarRadiation() / 6000.0;
     }
 }
+
+// Mean Wind Speed (km/h)
+double UtilityStats::MeanWind(
+    const std::map<int, std::map<int, BST<WeatherRec> > > & dataMap,
+    int year, int month)
+{
+    auto itYear = dataMap.find(year);
+    if (itYear == dataMap.end()) return 0.0;
+
+    auto itMonth = itYear->second.find(month);
+    if (itMonth == itYear->second.end()) return 0.0;
+
+    g_sum = 0;
+    g_count = 0;
+
+    itMonth->second.Inorder(VisitWind);
+
+    if (g_count == 0) return 0.0;
+    return g_sum / g_count;
+}
+
+// Standard Deviation Wind
+double UtilityStats::SDWind(
+    const std::map<int, std::map<int, BST<WeatherRec> > > & dataMap,
+    int year, int month, double mean)
+{
+    auto itYear = dataMap.find(year);
+    if (itYear == dataMap.end()) return 0.0;
+
+    auto itMonth = itYear->second.find(month);
+    if (itMonth == itYear->second.end()) return 0.0;
+
+    g_mean = mean;
+    g_varSum = 0;
+    g_count = 0;
+
+    // Count valid records
+    itMonth->second.Inorder(VisitWind);
+
+    if (g_count <= 1) return 0.0;
+
+    // Compute variance
+    g_varSum = 0;
+    itMonth->second.Inorder(VisitWindVar);
+
+    return std::sqrt(g_varSum / (g_count - 1));
+}
+
+// Mean Temperature
+double UtilityStats::MeanTemp(
+    const std::map<int, std::map<int, BST<WeatherRec> > > & dataMap,
+    int year, int month)
+{
+    auto itYear = dataMap.find(year);
+    if (itYear == dataMap.end()) return 0.0;
+
+    auto itMonth = itYear->second.find(month);
+    if (itMonth == itYear->second.end()) return 0.0;
+
+    g_sum = 0;
+    g_count = 0;
+
+    itMonth->second.Inorder(VisitTemp);
+
+    if (g_count == 0) return 0.0;
+    return g_sum / g_count;
+}
+
+// Standard Deviation Temperature
+double UtilityStats::SDTemp(
+    const std::map<int, std::map<int, BST<WeatherRec> > > & dataMap,
+    int year, int month, double mean)
+{
+    auto itYear = dataMap.find(year);
+    if (itYear == dataMap.end()) return 0.0;
+
+    auto itMonth = itYear->second.find(month);
+    if (itMonth == itYear->second.end()) return 0.0;
+
+    g_mean = mean;
+    g_varSum = 0;
+    g_count = 0;
+
+    itMonth->second.Inorder(VisitTemp);
+
+    if (g_count <= 1) return 0.0;
+
+    g_varSum = 0;
+    itMonth->second.Inorder(VisitTempVar);
+
+    return std::sqrt(g_varSum / (g_count - 1));
+}
+
+// Solar Total (kWh/m^2)
+double UtilityStats::SolarTotal(
+    const std::map<int, std::map<int, BST<WeatherRec> > > & dataMap,
+    int year, int month)
+{
+    auto itYear = dataMap.find(year);
+    if (itYear == dataMap.end()) return 0.0;
+
+    auto itMonth = itYear->second.find(month);
+    if (itMonth == itYear->second.end()) return 0.0;
+
+    g_solar = 0;
+
+    itMonth->second.Inorder(VisitSolar);
+
+    return g_solar;
+}
+
+// Check if any data exists
+bool UtilityStats::HasAnyDataForMonth(
+    const std::map<int, std::map<int, BST<WeatherRec> > > & dataMap,
+    int year, int month)
+{
+    auto itYear = dataMap.find(year);
+    if (itYear == dataMap.end()) return false;
+
+    auto itMonth = itYear->second.find(month);
+    if (itMonth == itYear->second.end()) return false;
+
+    g_found = false;
+
+    itMonth->second.Inorder(VisitCheck);
+
+    return g_found;
+}
+
+
+

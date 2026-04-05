@@ -1,22 +1,19 @@
 #ifndef APPLICATION_H
 #define APPLICATION_H
 
-#include "WeatherLog.h"
 #include <map>
 #include "BST.h"
+#include "WeatherRec.h"
 
 class Application
 {
 public:
-    Application(WeatherLog& log);
+    Application();
     void Run();
 
 private:
-    WeatherLog& m_log;
 
-
-    std::map<int, std::multimap<int, WeatherRec> > m_dataMap;
-    BST<int> m_tree;
+    std::map<int, std::map<int, BST<WeatherRec> > > m_dataMap;
 
     void DisplayMenu() const;
     int ReadInt() const;

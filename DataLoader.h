@@ -1,7 +1,8 @@
 #ifndef DATALOADER_H
 #define DATALOADER_H
-
-#include "WeatherLog.h"
+#include <map>
+#include "BST.h"
+#include "WeatherRec.h"
 #include <string>
 
 /**
@@ -28,9 +29,12 @@ public:
      * @param log WeatherLog object to store all loaded records.
      * @return true if at least one file is loaded; otherwise false.
      */
-    bool ReadDataSources(const std::string& sourceFile, WeatherLog& log);
+        bool ReadDataSources(const std::string& sourceFile,
+    std::map<int, std::map<int, BST<WeatherRec> > > & dataMap);
+
 
 private:
+
     /**
      * @brief Opens one CSV file and loads its records into WeatherLog.
      *
@@ -38,8 +42,8 @@ private:
      * @param log WeatherLog object to store records.
      * @return true if the file loads successfully; otherwise false.
      */
-    bool LoadData(const std::string& fileName, WeatherLog& log);
-
+        bool LoadData(const std::string& fileName,
+    std::map<int, std::map<int, BST<WeatherRec> > > & dataMap);
     /**
      * @brief Checks if a line is blank or contains only commas/spaces.
      *
